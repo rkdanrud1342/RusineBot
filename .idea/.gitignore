@@ -1,0 +1,8 @@
+# 디폴트 무시된 파일
+/shelf/
+/workspace.xml
+/kotlinc.xml
+/misc.xml
+/gradle.xml
+/inspectionProfiles/Project_Default.xml
+/vcs.xml

@@ -178,32 +178,35 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
             return
         }
 
+        val currentTrack = playerInfo.currentTrack ?: run {
+            interaction.respondPublic { embed { description = "재생중인 음원이 없어요." } }
+            return
+        }
+
         interaction.respondPublic {
             embed {
                 author {
                     this.name = "▶ [재생목록]"
                 }
 
-                val currentTrack = playerInfo.player.playingTrack
-
                 field(
                     name = "재생중",
-                    value = { "[${currentTrack.info?.title}](${currentTrack.info?.uri})\n" }
+                    value = { "[${currentTrack.track.info?.title}](${currentTrack.track.info?.uri}) - ${currentTrack.regUser.mention}\n" }
                 )
 
-                thumbnail { this.url = "${currentTrack.info?.artworkUrl}" }
+                thumbnail { this.url = "${currentTrack.track.info?.artworkUrl}" }
 
                 if (playerInfo.playlist.isEmpty()) {
                     return@embed
                 }
 
+                field { } // for space between current track and playlist
+
                 val playlistString = buildString {
                     playerInfo.playlist.forEachIndexed { index, trackInfo ->
-                        appendLine("`#$index` [${trackInfo.track.info?.title}](${trackInfo.track.info?.uri})\n")
+                        appendLine("`#$index` [${trackInfo.track.info?.title}](${trackInfo.track.info?.uri}) - ${trackInfo.regUser.mention}\n")
                     }
                 }
-
-                field { } // for space between current track and playlist
 
                 field(
                     name = "대기열",
@@ -297,6 +300,8 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
         isPlaying = true
         player.playTrack(trackInfo.track)
 
+        currentTrack = trackInfo
+
         connection.scope.launch {
             currentChannel.createMessage {
                 embed {
@@ -327,6 +332,7 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
         val playlist : MutableList<TrackInfo> = mutableListOf(),
     ) {
         var isPlaying : Boolean = false
+        var currentTrack : TrackInfo? = null
     }
 
     data class TrackInfo(

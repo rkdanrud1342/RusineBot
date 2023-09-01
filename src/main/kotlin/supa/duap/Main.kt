@@ -23,7 +23,6 @@ data class Data(
 @KordVoice
 suspend fun main() {
 
-
     val serializer = Json {
         prettyPrint = true
         encodeDefaults = true
@@ -31,7 +30,7 @@ suspend fun main() {
         serializersModule = SerializersModule {}
     }
 
-    val file = File("../app_info.txt")
+    val file = File("./app_info.txt")
 
     val data = serializer.decodeFromString<Data>(file.readText())
 

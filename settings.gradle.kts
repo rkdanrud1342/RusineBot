@@ -5,6 +5,7 @@ pluginManagement {
         maven("https://oss.sonatype.org/content/repositories/snapshots")
         maven("https://m2.dv8tion.net/releases")
         maven("https://jitpack.io")
+        maven("https://mvnrepository.com/artifact/commons-io/commons-io")
     }
 }
 

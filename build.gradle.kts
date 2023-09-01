@@ -12,6 +12,8 @@ repositories {
 }
 
 dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation("commons-io:commons-io:2.13.0")
     implementation("dev.kord:kord-core:0.10.0")
     implementation("dev.kord:kord-voice:0.10.0")
     implementation("dev.kord:kord-core-voice:0.10.0")
@@ -19,6 +21,11 @@ dependencies {
     implementation("dev.arbjerg:lavaplayer:2.0.1")
     implementation(kotlin("reflect"))
 }
+
+kotlin {
+    jvmToolchain(18)
+}
+
 
 tasks.test {
     useJUnitPlatform()
@@ -32,8 +39,4 @@ tasks.jar {
         from(zipTree(file.absoluteFile))
     }
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
-}
-
-kotlin {
-    jvmToolchain(18)
 }

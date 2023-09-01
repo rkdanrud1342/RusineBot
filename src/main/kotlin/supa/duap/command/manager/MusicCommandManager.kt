@@ -84,6 +84,17 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
             return
         }
 
+        val keyword = interaction.command.strings["키워드"] ?: run {
+            interaction.respondPublic { embed { description = "키워드가 없어요." } }
+            return
+        }
+
+        val trackInfo = lavaPlayerManager.queryTrack("ytsearch: $keyword", author)
+            ?: run {
+                interaction.respondPublic { embed { description = "음원을 찾지 못했어요." } }
+                return
+            }
+
         val playerInfo = playerInfoMap[channel.guildId]
             ?: run {
                 val player = lavaPlayerManager.createPlayer().apply { volume = 10 }
@@ -122,17 +133,6 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
 
                         playerInfoMap[channel.guildId] = this
                     }
-            }
-
-        val keyword = interaction.command.strings["키워드"] ?: run {
-            interaction.respondPublic { embed { description = "키워드가 없어요." } }
-            return
-        }
-
-        val trackInfo = lavaPlayerManager.queryTrack("ytsearch: $keyword", author)
-            ?: run {
-                interaction.respondPublic { embed { description = "음원을 찾지 못했어요." } }
-                return
             }
 
         playerInfo.addTrack(trackInfo)

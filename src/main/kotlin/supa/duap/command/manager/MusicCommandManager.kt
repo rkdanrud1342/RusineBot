@@ -119,8 +119,8 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
                                             embed { description = "음원 재생이 끝났어요." }
                                         }
 
-                                        connection.leave()
                                         playerInfoMap.remove(channel.guildId)
+                                        connection.leave()
                                     }
                                     return
                                 }

@@ -40,4 +40,34 @@ sealed class Command(
             description = "재생목록에서 모든 음원을 삭제해요."
         )
     }
+
+    sealed class MatchingCommand(
+        key : String,
+        description : String
+    ) : Command(key, description) {
+        data object CREATE_PROFILE : MatchingCommand(
+            key = "프로필생성",
+            description = "프로필을 등록합니다."
+        )
+
+        data object SHOP_PROFILE : MatchingCommand(
+            key = "프로필보기",
+            description = "프로필을 봅니다."
+        )
+
+        data object RANK_GAME : MatchingCommand(
+            key = "랭크매치",
+            description = "랭크매치 대기열에 등록합니다."
+        )
+
+        data object CASUAL_GAME : MatchingCommand(
+            key = "캐주얼매치",
+            description = "캐주얼매치 대기열에 등록합니다."
+        )
+
+        data object RECORD_SCORE : MatchingCommand(
+            key = "점수등록",
+            description = "랭크매치 종료 후 점수를 등록합니다."
+        )
+    }
 }

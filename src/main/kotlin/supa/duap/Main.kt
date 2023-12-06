@@ -5,38 +5,26 @@ import dev.kord.core.Kord
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.SerializersModule
-import java.io.File
-
-@Serializable
-data class Data(
-    @SerialName("token")
-    val token : String,
-
-    @SerialName("app_id")
-    val appId : String,
-)
+import org.koin.core.context.startKoin
+import org.koin.java.KoinJavaComponent.inject
+import supa.duap.modules.kordModule
+import supa.duap.modules.managerModule
+import supa.duap.modules.repositoryModule
 
 @KordVoice
 suspend fun main() {
-
-    val serializer = Json {
-        prettyPrint = true
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-        serializersModule = SerializersModule {}
+    startKoin {
+        modules(
+            kordModule,
+            repositoryModule,
+            managerModule
+        )
     }
 
-    val file = File("./app_info.txt")
+    val kord : Kord by inject(Kord::class.java)
+    val interactionManager : InteractionManager by inject(InteractionManager::class.java)
 
-    val data = serializer.decodeFromString<Data>(file.readText())
-
-    val kord = Kord(data.token)
-
-    InteractionManager(kord).start()
+    interactionManager.start()
 
     kord.login {
         @OptIn(PrivilegedIntent::class)

@@ -2,5 +2,6 @@ package supa.duap.match.model
 
 data class MatchArgs(
     val playerId : Any,
-    var phase : Int = 0,
+    val rankAvailableRange : Int = 1,
+    var phase : Int = 0
 )

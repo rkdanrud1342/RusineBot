@@ -20,6 +20,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             match?.let {
             }
         }
+
+        matchMakingManager.setOnGameNotCreatedListener {
+
+        }
     }
 
     override suspend fun registerCommand() {

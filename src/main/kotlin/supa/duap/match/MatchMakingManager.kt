@@ -1,7 +1,8 @@
 package supa.duap.match
 
-import co.touchlab.stately.collections.ConcurrentMutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.single
@@ -18,62 +19,105 @@ import kotlin.math.abs
 class MatchMakingManager(private val repo : MatchMakingRepository) {
     private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
-    private val casualGamePool : ConcurrentMutableList<Pair<Player, MatchArgs>> = ConcurrentMutableList()
-    private val rankGamePool : ConcurrentMutableList<Pair<Player, MatchArgs>> = ConcurrentMutableList()
+    private val casualGamePool : MutableMap<Player, MatchArgs> = mutableMapOf()
+    private val rankGamePool : MutableMap<Player, MatchArgs> = mutableMapOf()
+
+    private val casualGameChannel : Channel<Pair<Player, MatchArgs>> = Channel()
+    private val rankGameChannel : Channel<Pair<Player, MatchArgs>> = Channel()
+
+    private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
     private var onGameCreated : (suspend (Game?) -> Unit)? = null
+    private var onGameNotCreated : (suspend () -> Unit)? = null
 
     init {
         matchMakingScope.launch {
-            while (true) {
-                if (casualGamePool.size <= 1) {
-                    delay(1000L)
+            for (e1 in casualGameChannel) {
+                if (casualGamePool[e1.first] == null) {
                     continue
                 }
 
-                casualGamePool.forEach player1@ { p1Info ->
-                    casualGamePool.forEach player2@ { p2Info ->
-                        if (p1Info == p2Info) {
-                            return@player2
-                        }
+                var e2 : Map.Entry<Player, MatchArgs>? = null
 
-                        if (!checkGameArgs(p1Info, p2Info)) {
-                            return@player2
-                        }
-
-                        // make game
-                        val game = makeGame(p1Info, p2Info, CASUAL)
-                        onGameCreated?.invoke(game)
-                        casualGamePool.remove(p1Info)
-                        casualGamePool.remove(p2Info)
-                        return@player1
+                for (e in casualGamePool) {
+                    if (e1.first == e.key || !checkGameArgs(e1, e.toPair())) {
+                        // not matched. compare with next player.
+                        continue
                     }
 
-                    if (p1Info.second.phase < 5)
-                        p1Info.second.phase++
+                    // matched. init player2 info and break loop.
+                    e2 = e
+                    break
                 }
+
+                // when there was no player that can be matched.
+                e2?.let {
+                    val player1 = e1.first
+                    val player2 = it.key
+
+                    awaitingJobs.remove(player1)?.cancel()
+                    awaitingJobs.remove(player2)?.cancel()
+
+                    casualGamePool.remove(player1)
+                    casualGamePool.remove(player2)
+
+                    val game = makeGame(e1, it.toPair(), CASUAL)
+                    onGameCreated?.invoke(game)
+                } ?: run { onNoMatched(e1, CASUAL) }
             }
         }
 
         matchMakingScope.launch {
-            rankGamePool.forEach player1@ { p1Info ->
-                rankGamePool.forEach player2@ { p2Info ->
-                    if (p1Info == p2Info) {
-                        return@player2
-                    }
-
-                    if (!checkGameArgs(p1Info, p2Info)) {
-                        return@player2
-                    }
-
-                    // make game
-                    makeGame(p1Info, p2Info, RANK)
-                    return@player1
+            for (e1 in rankGameChannel) {
+                if (rankGamePool[e1.first] == null) {
+                    continue
                 }
 
-                if (p1Info.second.phase < 5)
-                    p1Info.second.phase++
+                var e2 : Map.Entry<Player, MatchArgs>? = null
+
+                for (e in rankGamePool) {
+                    if (e1.first == e.key || !checkGameArgs(e1, e.toPair())) {
+                        // not matched. compare with next player.
+                        continue
+                    }
+
+                    // matched. init player2 info and break loop.
+                    e2 = e
+                    break
+                }
+
+                e2?.let {
+                    val player1 = e1.first
+                    val player2 = it.key
+
+                    awaitingJobs.remove(player1)?.cancel()
+                    awaitingJobs.remove(player2)?.cancel()
+
+                    rankGamePool.remove(player1)
+                    rankGamePool.remove(player2)
+
+                    val game = makeGame(e1, it.toPair(), RANK)
+                    onGameCreated?.invoke(game)
+                } ?: run {
+                    // when there was no player that can be matched.
+                    onNoMatched(e1, RANK)
+                }
             }
+        }
+    }
+
+    private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, gameType : GameType) {
+        if (p.second.phase >= 5) {
+            onGameNotCreated?.invoke()
+            return
+        }
+
+        awaitingJobs[p.first] = matchMakingScope.launch {
+            delay(30000L)
+            when (gameType) {
+                RANK -> rankGameChannel
+                CASUAL -> casualGameChannel
+            }.send(p)
         }
     }
 
@@ -81,12 +125,24 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         onGameCreated = listener
     }
 
-    fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) =
-        when(gameType) {
-            RANK -> rankGamePool
-            CASUAL -> casualGamePool
+    fun setOnGameNotCreatedListener(listener : (suspend () -> Unit)?) {
+        onGameNotCreated = listener
+    }
+
+    fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) {
+        matchMakingScope.launch {
+            when (gameType) {
+                CASUAL -> {
+                    casualGamePool[player] = matchArgs
+                    casualGameChannel.send(player to matchArgs)
+                }
+                RANK -> {
+                    rankGamePool[player] = matchArgs
+                    rankGameChannel.send(player to matchArgs)
+                }
+            }
         }
-            .add(player to matchArgs)
+    }
 
     suspend fun createProfile(id : ULong) : Player? =
         repo.createPlayer(id)

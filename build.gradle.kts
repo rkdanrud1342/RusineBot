@@ -10,17 +10,28 @@ version = "0.0"
 repositories {
     mavenCentral()
     maven("https://jitpack.io")
+
+    maven {
+        name = "Sonatype Snapshots (Legacy)"
+        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+    }
+
+    maven {
+        name = "Sonatype Snapshots"
+        url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots")
+    }
 }
 
 dependencies {
     implementation("commons-io:commons-io:2.13.0")
-    implementation("dev.kord:kord-core:0.10.0")
+    implementation("dev.kord:kord-core:0.13.1")
     implementation("dev.kord:kord-voice:0.10.0")
     implementation("dev.kord:kord-core-voice:0.10.0")
     implementation("org.slf4j:slf4j-simple:2.0.7")
     implementation("dev.arbjerg:lavaplayer:2.0.1")
     implementation("org.json:json:20230618")
     implementation("io.insert-koin:koin-core:3.5.0")
+    implementation(libs.kord.extensions)
     implementation(kotlin("reflect"))
 }
 

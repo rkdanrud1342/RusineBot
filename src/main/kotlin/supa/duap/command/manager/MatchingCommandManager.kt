@@ -1,13 +1,15 @@
 package supa.duap.command.manager
 
+import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.optional
 import dev.kord.core.Kord
+import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
-import dev.kord.rest.builder.message.create.embed
+import dev.kord.rest.builder.message.embed
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
@@ -16,17 +18,6 @@ import supa.duap.match.model.MatchArgs
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
-
-    init {
-        matchMakingManager.setOnGameCreatedListener { match ->
-            match?.let {
-            }
-        }
-
-        matchMakingManager.setOnGameNotCreatedListener {
-
-        }
-    }
 
     override suspend fun registerCommand() {
         addCommand(MatchingCommand.CREATE_PROFILE)
@@ -111,7 +102,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     private suspend fun registerGamePool(interaction : ChatInputCommandInteraction, gameType : GameType) {
         val author = interaction.user.takeIf { it is Member } as? Member ?: run {
             interaction.respondPublic {
-                embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." }
+                embed {
+                    description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요."
+                }
             }
             return
         }
@@ -124,8 +117,30 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         val rankAvailableRange = interaction.command.integers["등급 허용 한도"]?.toInt() ?: 1
         val matchArgs = MatchArgs(player.id, rankAvailableRange)
 
-        matchMakingManager.addQueue(player, matchArgs, gameType)
+        matchMakingManager.addOnGameCreateListener(key = player) { game ->
+            if (game == null) {
+                interaction.channel.createMessage {
+                    embed {
+                        description = "${author.mention} 상대방을 찾지 못해 매칭이 취소되었어요."
+                    }
+                }
+                return@addOnGameCreateListener
+            }
 
+            val p1Mention = author.guild.getMemberOrNull(Snowflake(game.player1Id))?.mention
+            val p2Mention = author.guild.getMemberOrNull(Snowflake(game.player2Id))?.mention
+
+            interaction.channel.createMessage {
+                embed {
+                    author {
+                        name = "${p1Mention}, $p2Mention 매칭됐어요."
+                    }
+                    description = "1P : $p1Mention\n2P : $p2Mention\n\n 방을 생성한 후 게임을 진행해주세요."
+                }
+            }
+        }
+
+        matchMakingManager.addQueue(player, matchArgs, gameType)
 
         interaction.respondPublic {
             val gameTypeName = when (gameType) {

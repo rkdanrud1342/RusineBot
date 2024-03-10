@@ -21,7 +21,7 @@ import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.string
-import dev.kord.rest.builder.message.create.embed
+import dev.kord.rest.builder.message.embed
 import dev.kord.voice.AudioFrame
 import dev.kord.voice.VoiceConnection
 import kotlinx.coroutines.launch

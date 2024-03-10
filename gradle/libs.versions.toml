@@ -1,0 +1,5 @@
+[versions]
+kord-extensions = "1.8.0-SNAPSHOT"
+
+[libraries]
+kord-extensions = { module = "com.kotlindiscord.kord.extensions:kord-extensions", version.ref = "kord-extensions" }

@@ -27,8 +27,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
-    private var onGameCreated : (suspend (Game?) -> Unit)? = null
-    private var onGameNotCreated : (suspend () -> Unit)? = null
+    private val matchResultListener = mutableMapOf<Player, (suspend (Game?) -> Unit)?>()
 
     init {
         matchMakingScope.launch {
@@ -62,8 +61,12 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     casualGamePool.remove(player2)
 
                     val game = makeGame(e1, it.toPair(), CASUAL)
-                    onGameCreated?.invoke(game)
-                } ?: run { onNoMatched(e1, CASUAL) }
+                    matchResultListener.remove(player1)?.invoke(game)
+                    matchResultListener.remove(player2)
+                } ?: run {
+                    // when there was no player that can be matched.
+                    onNoMatched(e1, CASUAL)
+                }
             }
         }
 
@@ -86,6 +89,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     break
                 }
 
+                // when there was no player that can be matched.
                 e2?.let {
                     val player1 = e1.first
                     val player2 = it.key
@@ -96,8 +100,9 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     rankGamePool.remove(player1)
                     rankGamePool.remove(player2)
 
-                    val game = makeGame(e1, it.toPair(), RANK)
-                    onGameCreated?.invoke(game)
+                    val game = makeGame(e1, it.toPair(), CASUAL)
+                    matchResultListener.remove(player1)?.invoke(game)
+                    matchResultListener.remove(player2)
                 } ?: run {
                     // when there was no player that can be matched.
                     onNoMatched(e1, RANK)
@@ -108,7 +113,10 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, gameType : GameType) {
         if (p.second.phase >= 5) {
-            onGameNotCreated?.invoke()
+            val player1 = p.first
+            awaitingJobs.remove(player1)?.takeIf { it.isActive }?.cancel()
+            rankGamePool.remove(player1)
+            matchResultListener.remove(player1)?.invoke(null)
             return
         }
 
@@ -121,12 +129,8 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         }
     }
 
-    fun setOnGameCreatedListener(listener : (suspend (Game?) -> Unit)?) {
-        onGameCreated = listener
-    }
-
-    fun setOnGameNotCreatedListener(listener : (suspend () -> Unit)?) {
-        onGameNotCreated = listener
+    fun addOnGameCreateListener(key : Player, listener : (suspend (Game?) -> Unit)?) {
+        matchResultListener[key] = listener
     }
 
     fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) {
@@ -185,4 +189,6 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
         return (p1Phase < 0 || diff <= p1Phase) && (p2Phase < 0 || diff <= p2Phase)
     }
+
+    fun isRegistered(player : Player) : Boolean = rankGamePool[player] != null || casualGamePool[player] != null
 }

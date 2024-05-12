@@ -4,18 +4,19 @@ import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
+import dev.kord.gateway.NON_PRIVILEGED
 import dev.kord.gateway.PrivilegedIntent
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.inject
-import supa.duap.modules.kordModule
-import supa.duap.modules.managerModule
-import supa.duap.modules.repositoryModule
+import supa.duap.modules.*
 
 @KordVoice
 suspend fun main() {
     startKoin {
         modules(
             kordModule,
+            networkModule,
+            apiModule,
             repositoryModule,
             managerModule
         )
@@ -28,6 +29,6 @@ suspend fun main() {
 
     kord.login {
         @OptIn(PrivilegedIntent::class)
-        intents = Intents.nonPrivileged + Intent.MessageContent
+        intents = Intents.NON_PRIVILEGED + Intent.MessageContent
     }
 }

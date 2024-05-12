@@ -1,26 +1,42 @@
 package supa.duap.modules
 
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.SerializersModule
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.dsl.module
+import retrofit2.Retrofit
+import supa.duap.api.RusineBotAPICallAdapterFactory
+import supa.duap.api.RusineBotGsonConverterFactory
+import java.util.concurrent.TimeUnit
+
 
 val networkModule = module {
     single {
-        HttpClient(CIO) {
-            install(ContentNegotiation) {
-                json(
-                    Json {
-                        prettyPrint = true
-                        encodeDefaults = true
-                        ignoreUnknownKeys = true
-                        serializersModule = SerializersModule {}
+        OkHttpClient()
+            .newBuilder()
+            .apply {
+                connectTimeout(timeout = 60L, unit = TimeUnit.SECONDS)
+                writeTimeout(timeout = 60L, unit = TimeUnit.SECONDS)
+                readTimeout(timeout = 60L, unit = TimeUnit.SECONDS)
+                retryOnConnectionFailure(true)
+                addInterceptor(
+                    HttpLoggingInterceptor().apply {
+                        HttpLoggingInterceptor.Level.BODY
                     }
                 )
+                addInterceptor {
+                    Exception(it.request().url.toString()).printStackTrace()
+                    it.proceed(it.request())
+                }
             }
-        }
+            .build()
+    }
+
+    single {
+        Retrofit.Builder()
+            .baseUrl("http://localhost:15382/")
+            .addConverterFactory(RusineBotGsonConverterFactory.create())
+            .addCallAdapterFactory(RusineBotAPICallAdapterFactory())
+            .client(get())
+            .build()
     }
 }

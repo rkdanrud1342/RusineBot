@@ -1,23 +1,25 @@
 package supa.duap.match
 
-import supa.duap.match.model.Game
-import supa.duap.match.model.GameType
-import supa.duap.match.model.Player
-import supa.duap.request
+import supa.duap.api.request
 
 class MatchMakingRepository(private val api : MatchMakingApi) {
 
     suspend fun createPlayer(
-        id : ULong
-    ) = request<Player?> { api.createPlayer(id) }
+        id : Long,
+        name : String?
+    ) = request { api.registerUser(id, name.orEmpty()) }
 
     suspend fun getPlayer(
-        id : ULong
-    ) = request<Player?> { api.getPlayer(id) }
+        id : Long
+    ) = request { api.getPlayer(id) }
 
-    suspend fun createGame(
-        gameType : GameType,
-        player1Id : ULong,
-        player2Id : ULong
-    ) = request<Game?> { api.createGame(gameType, player1Id, player2Id) }
+    suspend fun createCasualGame(
+        player1Id : Long,
+        player2Id : Long
+    ) = request { api.createCasualGame(player1Id, player2Id) }
+
+    suspend fun createRankGame(
+        player1Id : Long,
+        player2Id : Long
+    ) = request { api.createRankGame(player1Id, player2Id) }
 }

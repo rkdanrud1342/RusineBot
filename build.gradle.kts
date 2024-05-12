@@ -24,6 +24,10 @@ repositories {
 
 dependencies {
     implementation("commons-io:commons-io:2.13.0")
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("dev.kord:kord-core:0.13.1")
     implementation("dev.kord:kord-voice:0.10.0")
     implementation("dev.kord:kord-core-voice:0.10.0")

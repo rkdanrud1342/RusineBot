@@ -1,7 +1,5 @@
 package supa.duap.match.model
 
-import kotlinx.serialization.Serializable
-
 sealed interface Game {
     val id : Long
     val player1Id : Long
@@ -9,7 +7,6 @@ sealed interface Game {
     val player1WinCount : Int
     val player2WinCount : Int
 
-    @Serializable
     data class CasualGame(
         override val id : Long,
         override val player1Id : Long,
@@ -18,7 +15,6 @@ sealed interface Game {
         override val player2WinCount : Int = 0
     ) : Game
 
-    @Serializable
     data class RankGame(
         override val id : Long,
         override val player1Id : Long,

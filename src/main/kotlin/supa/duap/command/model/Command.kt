@@ -50,7 +50,7 @@ sealed class Command(
             description = "프로필을 등록합니다."
         )
 
-        data object SHOP_PROFILE : MatchingCommand(
+        data object SHOW_PROFILE : MatchingCommand(
             key = "프로필보기",
             description = "프로필을 봅니다."
         )

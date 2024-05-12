@@ -15,6 +15,7 @@ import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
 import supa.duap.match.model.MatchArgs
+import supa.duap.match.model.Player
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
@@ -22,16 +23,17 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     override suspend fun registerCommand() {
         addCommand(MatchingCommand.CREATE_PROFILE)
 
-        addCommand(MatchingCommand.SHOP_PROFILE) {
+        addCommand(MatchingCommand.SHOW_PROFILE) {
+            this.
             user(
-                name = "프로필 출력 대상",
+                name = "사용자",
                 description = "해당 사용자의 프로필을 출력해요."
             ).optional()
         }
 
         addCommand(MatchingCommand.CASUAL_GAME) {
             integer(
-                name = "등급 허용 한도",
+                name = "등급허용한도",
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
             ).optional()
         }
@@ -42,7 +44,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     override suspend fun responseCommand(command : MatchingCommand, interaction : ChatInputCommandInteraction) {
         when (command) {
             MatchingCommand.CREATE_PROFILE -> registerProfile(interaction)
-            MatchingCommand.SHOP_PROFILE -> showProfile(interaction)
+            MatchingCommand.SHOW_PROFILE -> showProfile(interaction)
             MatchingCommand.CASUAL_GAME -> registerGamePool(interaction, GameType.CASUAL)
             MatchingCommand.RANK_GAME -> registerGamePool(interaction, GameType.RANK)
             MatchingCommand.RECORD_SCORE -> registerScore(interaction)
@@ -56,7 +58,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         }
 
         val player = matchMakingManager.createProfile(
-            author.id.value,
+            author.id.value.toLong(),
+            author.nickname
         ) ?: run {
             interaction.respondPublic { embed { description = "프로필 생성에 실패했어요." } }
             return
@@ -68,7 +71,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     name = "프로필을 생성했어요."
                 }
 
-                description = "등급 : ${player.grade}\n점수 : ${player.eloScore}\n경기수 : ${player.winCount + player.loseCount}\n승리 : ${player.winCount}\n패배 : ${player.loseCount}\nAFK : ${player.afkCount}"
+                description = player.getPlayerInfo()
             }
         }
     }
@@ -83,7 +86,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
         val user = interaction.command.users["프로필 출력 대상"] ?: author
 
-        val player = matchMakingManager.getProfile(user.id.value) ?: run {
+        val player = matchMakingManager.getProfile(user.id.value.toLong()) ?: run {
             interaction.respondPublic { embed { description = "프로필이 등록되지 않았어요." } }
             return
         }
@@ -94,7 +97,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     name = user.username
                 }
 
-                description = "등급 : ${player.grade}\n점수 : ${player.eloScore}\n경기수 : ${player.winCount + player.loseCount}\n승리 : ${player.winCount}\n패배 : ${player.loseCount}\nAFK : ${player.afkCount}"
+                description = player.getPlayerInfo()
             }
         }
     }
@@ -109,7 +112,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             return
         }
 
-        val player = matchMakingManager.getProfile(author.id.value) ?: run {
+        val player = matchMakingManager.getProfile(author.id.value.toLong()) ?: run {
             interaction.respondPublic { embed { description = "프로필이 등록되지 않았어요." } }
             return
         }
@@ -144,8 +147,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
         interaction.respondPublic {
             val gameTypeName = when (gameType) {
-                GameType.CASUAL -> "랭크 게임"
-                GameType.RANK -> "캐주얼 게임"
+                GameType.CASUAL -> "캐주얼 게임"
+                GameType.RANK -> "랭크 게임"
             }
 
             embed {
@@ -154,7 +157,27 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         }
     }
 
-    private fun registerScore(interaction : ChatInputCommandInteraction) {
-
+    private suspend fun registerScore(interaction : ChatInputCommandInteraction) {
+        interaction.respondPublic {
+            embed {
+                description = "개발중이라고 애송이"
+            }
+        }
     }
+
+    private fun Player.getPlayerInfo() =
+            "등급 : $grade\n" +
+            "점수 : $eloScore\n" +
+            "\n" +
+            "랭크 경기\n" +
+            "경기수 : ${rankWinCount + rankLoseCount}\n" +
+            "승리 : $rankWinCount\n" +
+            "패배 : $rankLoseCount\n" +
+            "\n" +
+            "캐주얼 경기\n" +
+            "경기수 : ${casualWinCount + casualLoseCount}\n" +
+            "승리 : $casualWinCount\n" +
+            "패배 : $casualLoseCount\n" +
+            "\n" +
+            "AFK : $afkCount"
 }

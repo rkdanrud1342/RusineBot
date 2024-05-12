@@ -1,9 +1,9 @@
 package supa.duap.modules
 
 import org.koin.dsl.module
+import retrofit2.Retrofit
 import supa.duap.match.MatchMakingApi
-import supa.duap.match.MatchMakingApiImpl
 
 val apiModule = module {
-    single<MatchMakingApi> { MatchMakingApiImpl(get()) }
+    single { get<Retrofit>().create(MatchMakingApi::class.java) }
 }

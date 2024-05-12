@@ -53,17 +53,23 @@ sealed class Command(
         data object SHOW_PROFILE : MatchingCommand(
             key = "프로필보기",
             description = "프로필을 봅니다."
-        )
+        ) {
+            const val optionName1 = "사용자"
+        }
 
         data object RANK_GAME : MatchingCommand(
             key = "랭크매치",
             description = "랭크매치 대기열에 등록합니다."
-        )
+        ) {
+            const val optionName1 = "등급허용한도"
+        }
 
         data object CASUAL_GAME : MatchingCommand(
             key = "캐주얼매치",
             description = "캐주얼매치 대기열에 등록합니다."
-        )
+        ) {
+            const val optionName1 = "등급허용한도"
+        }
 
         data object RECORD_SCORE : MatchingCommand(
             key = "점수등록",

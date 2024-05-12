@@ -14,13 +14,14 @@ import supa.duap.match.model.GameType
 import supa.duap.match.model.GameType.*
 import supa.duap.match.model.Player
 import supa.duap.match.model.MatchArgs
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
 class MatchMakingManager(private val repo : MatchMakingRepository) {
     private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
-    private val casualGamePool : MutableMap<Player, MatchArgs> = mutableMapOf()
-    private val rankGamePool : MutableMap<Player, MatchArgs> = mutableMapOf()
+    private val casualGamePool : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
+    private val rankGamePool : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
 
     private val casualGameChannel : Channel<Pair<Player, MatchArgs>> = Channel()
     private val rankGameChannel : Channel<Pair<Player, MatchArgs>> = Channel()
@@ -38,12 +39,16 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         if (p.second.phase >= 5) {
             val player1 = p.first
             awaitingJobs.remove(player1)?.takeIf { it.isActive }?.cancel()
-            rankGamePool.remove(player1)
+            when (gameType) {
+                RANK -> rankGamePool
+                CASUAL -> casualGamePool
+            }.remove(player1)
             matchResultListener.remove(player1)?.invoke(null)
             return
         }
 
         awaitingJobs[p.first] = matchMakingScope.launch {
+            p.second.phase++
             delay(30000L)
             when (gameType) {
                 RANK -> rankGameChannel
@@ -56,7 +61,11 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         matchResultListener[key] = listener
     }
 
-    fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) {
+    fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) : Boolean {
+        if (isRegistered(player, matchArgs, gameType)) {
+            return false
+        }
+
         matchMakingScope.launch {
             when (gameType) {
                 CASUAL -> {
@@ -69,22 +78,12 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                 }
             }
         }
+
+        return true
     }
 
-    suspend fun createProfile(id : Long, nickname : String?) : Player? =
-        repo.createPlayer(id, nickname)
-            .take(1)
-            .catch {
-                it.printStackTrace()
-                emit(null)
-            }
-            .single()
-
-    suspend fun getProfile(id : Long) : Player? =
-        repo.getPlayer(id)
-            .take(1)
-            .catch { emit(null) }
-            .single()
+    suspend fun createProfile(id : Long, nickname : String?) = repo.createPlayer(id, nickname)
+    suspend fun getProfile(id : Long) = repo.getPlayer(id)
 
     private suspend fun makeGame(
         p1 : Pair<Player, MatchArgs>,
@@ -119,7 +118,11 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         return (p1Phase < 0 || diff <= p1Phase) && (p2Phase < 0 || diff <= p2Phase)
     }
 
-    fun isRegistered(player : Player) : Boolean = rankGamePool[player] != null || casualGamePool[player] != null
+    private fun isRegistered(player : Player, matchArgs : MatchArgs, gameType : GameType) =
+        matchArgs == when (gameType) {
+            CASUAL -> casualGamePool[player]
+            RANK -> rankGamePool[player]
+        }
 
     private fun makeChannel(gameType : GameType) {
         val (channel, pool) = when (gameType) {

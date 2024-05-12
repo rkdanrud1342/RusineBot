@@ -19,14 +19,13 @@ val networkModule = module {
                 readTimeout(timeout = 60L, unit = TimeUnit.SECONDS)
                 retryOnConnectionFailure(true)
                 addInterceptor(
-                    HttpLoggingInterceptor().apply {
-                        HttpLoggingInterceptor.Level.BODY
+                    HttpLoggingInterceptor { message ->
+                        Exception(message).printStackTrace()
                     }
+                        .apply {
+                            level = HttpLoggingInterceptor.Level.BODY
+                        }
                 )
-                addInterceptor {
-                    Exception(it.request().url.toString()).printStackTrace()
-                    it.proceed(it.request())
-                }
             }
             .build()
     }

@@ -1,6 +1,7 @@
 package supa.duap.match
 
 import supa.duap.api.request
+import supa.duap.match.model.Game
 
 class MatchMakingRepository(private val api : MatchMakingApi) {
 
@@ -13,6 +14,10 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
         id : Long
     ) = request { api.getPlayer(id) }
 
+    suspend fun getProfile(
+        id : Long
+    ) = request { api.getProfile(id) }
+
     suspend fun createCasualGame(
         player1Id : Long,
         player2Id : Long
@@ -20,6 +25,23 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
 
     suspend fun createRankGame(
         player1Id : Long,
-        player2Id : Long
+        player2Id : Long,
     ) = request { api.createRankGame(player1Id, player2Id) }
+
+    suspend fun registerGameScore(
+        game : Game,
+        p1Score : Int,
+        p2Score : Int
+    ) = request {
+        val apiFunc = when (game) {
+            is Game.CasualGame -> api::registerCasualGameScore
+            is Game.RankGame -> api::registerRankGameScore
+        }
+
+        apiFunc(
+            game.id,
+            p1Score,
+            p2Score
+        )
+    }
 }

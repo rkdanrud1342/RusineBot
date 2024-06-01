@@ -1,19 +1,11 @@
 package supa.duap.match
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.single
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.*
 import supa.duap.BaseCoroutine
-import supa.duap.match.model.Game
-import supa.duap.match.model.GameType
+import supa.duap.match.model.*
 import supa.duap.match.model.GameType.*
-import supa.duap.match.model.Player
-import supa.duap.match.model.MatchArgs
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
@@ -28,7 +20,9 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
-    private val matchResultListener = mutableMapOf<Player, (suspend (Game?) -> Unit)?>()
+    private val matchResultListeners = mutableMapOf<Player, (suspend (Game?) -> Unit)?>()
+
+    private val games : MutableMap<Long, Game> = ConcurrentHashMap()
 
     init {
         makeChannel(CASUAL)
@@ -43,7 +37,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                 RANK -> rankGamePool
                 CASUAL -> casualGamePool
             }.remove(player1)
-            matchResultListener.remove(player1)?.invoke(null)
+            matchResultListeners.remove(player1)?.invoke(null)
             return
         }
 
@@ -58,7 +52,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     fun addOnGameCreateListener(key : Player, listener : (suspend (Game?) -> Unit)?) {
-        matchResultListener[key] = listener
+        matchResultListeners[key] = listener
     }
 
     fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) : Boolean {
@@ -72,6 +66,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     casualGamePool[player] = matchArgs
                     casualGameChannel.send(player to matchArgs)
                 }
+
                 RANK -> {
                     rankGamePool[player] = matchArgs
                     rankGameChannel.send(player to matchArgs)
@@ -83,25 +78,30 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     suspend fun createProfile(id : Long, nickname : String?) = repo.createPlayer(id, nickname)
-    suspend fun getProfile(id : Long) = repo.getPlayer(id)
+    suspend fun getProfile(id : Long) = repo.getProfile(id)
+    suspend fun getPlayer(id : Long) = repo.getPlayer(id)
+    
+    suspend fun registerGameScore(id : Long, p1Score : Int, p2Score : Int) : Flow<Any?> {
+        val game = games[id] ?: throw Exception("진행중인 게임이 없습니다.")
+
+        return repo.registerGameScore(game, p1Score, p2Score)
+                .onEach {
+                    games.remove(game.player1.id)
+                    games.remove(game.player2.id)
+                }
+    }
 
     private suspend fun makeGame(
         p1 : Pair<Player, MatchArgs>,
         p2 : Pair<Player, MatchArgs>,
         type : GameType
-    ) : Game? {
-        if (!checkGameArgs(p1, p2)) {
-            return null
-        }
-
-        return when (type) {
-            CASUAL -> repo.createCasualGame(p1.first.id, p2.first.id)
-            RANK -> repo.createRankGame(p1.first.id, p2.first.id)
-        }
-            .take(1)
-            .catch { emit(null) }
-            .single()
+    ) : Game? = when (type) {
+        CASUAL -> repo.createCasualGame(p1.first.id, p2.first.id)
+        RANK -> repo.createRankGame(player1Id = p1.first.id, player2Id = p2.first.id)
     }
+        .take(1)
+        .catch { emit(null) }
+        .single()
 
     private fun checkGameArgs(
         p1 : Pair<Player, MatchArgs>,
@@ -131,28 +131,28 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         }
 
         matchMakingScope.launch {
-            for (e1 in channel) {
-                if (pool[e1.first] == null) {
+            for (player1MatchArgsPair in channel) {
+                if (pool[player1MatchArgsPair.first] == null) {
                     continue
                 }
 
-                var e2 : Map.Entry<Player, MatchArgs>? = null
+                var player2MatchArgsPair : Pair<Player, MatchArgs>? = null
 
                 for (e in pool) {
-                    if (e1.first == e.key || !checkGameArgs(e1, e.toPair())) {
+                    if (player1MatchArgsPair.first == e.key || !checkGameArgs(player1MatchArgsPair, e.toPair())) {
                         // not matched. compare with next player.
                         continue
                     }
 
                     // matched. init player2 info and break loop.
-                    e2 = e
+                    player2MatchArgsPair = e.toPair()
                     break
                 }
 
                 // when matched
-                e2?.let {
-                    val player1 = e1.first
-                    val player2 = it.key
+                player2MatchArgsPair?.let {
+                    val player1 = player1MatchArgsPair.first
+                    val player2 = player2MatchArgsPair.first
 
                     awaitingJobs.remove(player1)?.cancel()
                     awaitingJobs.remove(player2)?.cancel()
@@ -160,12 +160,16 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     pool.remove(player1)
                     pool.remove(player2)
 
-                    val game = makeGame(e1, it.toPair(), gameType)
-                    matchResultListener.remove(player1)?.invoke(game)
-                    matchResultListener.remove(player2)
+                    val game = makeGame(player1MatchArgsPair, it, gameType) ?: return@let null
+
+                    games[player1.id] = game
+                    games[player2.id] = game
+
+                    matchResultListeners.remove(player1)?.invoke(game)
+                    matchResultListeners.remove(player2)
                 } ?: run {
                     // when no matched
-                    onNoMatched(e1, gameType)
+                    onNoMatched(player1MatchArgsPair, gameType)
                 }
             }
         }

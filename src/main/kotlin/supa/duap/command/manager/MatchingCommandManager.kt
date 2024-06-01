@@ -11,13 +11,15 @@ import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
 import supa.duap.match.model.MatchArgs
-import supa.duap.match.model.Player
+import supa.duap.match.model.PlayerProfile
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
@@ -44,7 +46,23 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
             ).optional()
         }
-        addCommand(MatchingCommand.RECORD_SCORE)
+        addCommand(MatchingCommand.RECORD_GAME_RESULT) {
+            integer(
+                name = MatchingCommand.RECORD_GAME_RESULT.optionName1,
+                description = "P1의 승리 수를 입력해주세요.",
+                builder = {
+                    minValue = 0
+                }
+            )
+
+            integer(
+                name = MatchingCommand.RECORD_GAME_RESULT.optionName2,
+                description = "P2의 승리 수를 입력해주세요.",
+                builder = {
+                    minValue = 0
+                }
+            )
+        }
     }
 
     override suspend fun responseCommand(command : MatchingCommand, interaction : ChatInputCommandInteraction) {
@@ -53,7 +71,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             MatchingCommand.SHOW_PROFILE -> showProfile(interaction)
             MatchingCommand.CASUAL_GAME -> registerGamePool(interaction, GameType.CASUAL)
             MatchingCommand.RANK_GAME -> registerGamePool(interaction, GameType.RANK)
-            MatchingCommand.RECORD_SCORE -> registerScore(interaction)
+            MatchingCommand.RECORD_GAME_RESULT -> registerGameResult(interaction)
         }
     }
 
@@ -88,7 +106,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                             name = "프로필을 생성했어요."
                         }
 
-                        description = player.getPlayerInfo()
+                        description = player.print()
                     }
                 }
             }
@@ -120,7 +138,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 interaction.respondPublic {
                     embed {
-                        description = player.getPlayerInfo()
+                        description = player.print()
                     }
                 }
             }
@@ -138,7 +156,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             emit(author)
         }
             .flatMapConcat {
-                matchMakingManager.getProfile(it.id.value.toLong())
+                matchMakingManager.getPlayer(it.id.value.toLong())
             }
             .onEach { player ->
                 if (player == null) {
@@ -150,24 +168,32 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 val matchArgs = MatchArgs(player.id, rankAvailableRange)
 
                 matchMakingManager.addOnGameCreateListener(key = player) { game ->
-                    if (game == null) {
-                        interaction.channel.createMessage {
-                            embed {
-                                description = "${player.name} 상대방을 찾지 못해 매칭이 취소되었어요."
+                    coroutineScope {
+                        launch {
+                            if (game == null) {
+                                interaction.channel.createMessage {
+                                    embed {
+                                        description = "${player.name} 상대방을 찾지 못해 매칭이 취소되었어요."
+                                    }
+                                }
+                                return@launch
                             }
-                        }
-                        return@addOnGameCreateListener
-                    }
 
-                    val p1Mention = author?.guild?.getMemberOrNull(Snowflake(game.player1Id))?.mention
-                    val p2Mention = author?.guild?.getMemberOrNull(Snowflake(game.player2Id))?.mention
+                            try {
+                                val p1Mention = author?.guild?.getMemberOrNull(Snowflake(game.player1.id))?.mention
+                                val p2Mention = author?.guild?.getMemberOrNull(Snowflake(game.player2.id))?.mention
 
-                    interaction.channel.createMessage {
-                        embed {
-                            author {
-                                name = "매칭됐어요."
+                                interaction.channel.createMessage {
+                                    embed {
+                                        author {
+                                            name = "매칭됐어요."
+                                        }
+                                        description = "1P : $p1Mention\n2P : $p2Mention\n\n 방을 생성한 후 게임을 진행해주세요."
+                                    }
+                                }
+                            } catch (e : Exception) {
+                                e.printStackTrace()
                             }
-                            description = "1P : $p1Mention\n2P : $p2Mention\n\n 방을 생성한 후 게임을 진행해주세요."
                         }
                     }
                 }
@@ -188,22 +214,40 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 }
             }
             .catch { e ->
+                e.printStackTrace()
                 interaction.respondPublic { embed { description = e.message ?: "매칭 등록에 실패했어요." } }
             }
             .collect()
     }
 
-    private suspend fun registerScore(interaction : ChatInputCommandInteraction) {
-        interaction.respondPublic {
-            embed {
-                description = "개발중이라고 애송이"
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun registerGameResult(interaction : ChatInputCommandInteraction) {
+        flow {
+            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
+                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
             }
+
+            emit(author)
         }
+            .flatMapConcat {
+                val winCounts = interaction.command.integers
+
+                val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT.optionName1] ?: throw Exception("매개변수가 잘못되었습니다.")
+                val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT.optionName2] ?: throw Exception("매개변수가 잘못되었습니다.")
+
+                matchMakingManager.registerGameScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
+            }
+            .catch { e ->
+                interaction.respondPublic { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
+            }
+            .collect {
+                interaction.respondPublic { embed { description = "게임 결과를 저장했어요." } }
+            }
     }
 
-    private fun Player.getPlayerInfo() =
+    private fun PlayerProfile.print() =
             "$name\n\n" +
-            "등급 : $grade\n" +
+            "등급 : ${grade.gradeName}\n" +
             "점수 : $eloScore\n" +
             "\n" +
             "랭크 경기\n" +
@@ -214,7 +258,5 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             "캐주얼 경기\n" +
             "경기수 : ${casualWinCount + casualLoseCount}\n" +
             "승리 : $casualWinCount\n" +
-            "패배 : $casualLoseCount\n" +
-            "\n" +
-            "AFK : $afkCount"
+            "패배 : $casualLoseCount\n"
 }

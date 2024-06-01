@@ -71,9 +71,12 @@ sealed class Command(
             const val optionName1 = "등급허용한도"
         }
 
-        data object RECORD_SCORE : MatchingCommand(
+        data object RECORD_GAME_RESULT : MatchingCommand(
             key = "점수등록",
-            description = "랭크매치 종료 후 점수를 등록합니다."
-        )
+            description = "매치 종료 후 스코어를 등록합니다."
+        ) {
+            const val optionName1 = "p1승리수"
+            const val optionName2 = "p2승리수"
+        }
     }
 }

@@ -3,6 +3,7 @@ package supa.duap.match
 import retrofit2.http.*
 import supa.duap.api.APIResponse
 import supa.duap.match.model.Game
+import supa.duap.match.model.PlayerProfile
 import supa.duap.match.model.Player
 
 interface MatchMakingApi {
@@ -12,15 +13,20 @@ interface MatchMakingApi {
     suspend fun registerUser(
         @Field("id") id : Long,
         @Field("playerName") name : String
-    ) : APIResponse<Player?>
+    ) : APIResponse<PlayerProfile?>
 
     @GET("player/info")
     suspend fun getPlayer(
         @Query("id") id : Long
     ) : APIResponse<Player?>
 
+    @GET("player/profile")
+    suspend fun getProfile(
+        @Query("id") id : Long
+    ) : APIResponse<PlayerProfile?>
+
     @GET("player/all")
-    suspend fun getAllPlayers() : APIResponse<List<Player>?>
+    suspend fun getAllPlayers() : APIResponse<List<PlayerProfile>?>
 
     @FormUrlEncoded
     @POST("match/casual/create")
@@ -31,8 +37,8 @@ interface MatchMakingApi {
 
     @FormUrlEncoded
     @POST("match/casual/score")
-    suspend fun registerCasualMatchScore(
-        @Field("gameId") player1Id : Long,
+    suspend fun registerCasualGameScore(
+        @Field("gameId") gameId : Long,
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
     ) : APIResponse<Any>
@@ -43,9 +49,24 @@ interface MatchMakingApi {
     ) : APIResponse<List<Game.CasualGame>?>
 
     @FormUrlEncoded
-    @POST("rank/game")
+    @POST("match/rank/create")
     suspend fun createRankGame(
-        @Field("player1_id") player1Id : Long,
-        @Field("player2_id") player2Id : Long
+        @Field("player1Id") player1Id : Long,
+        @Field("player2Id") player2Id : Long
     ) : APIResponse<Game.RankGame?>
+
+    @FormUrlEncoded
+    @POST("match/rank/score")
+    suspend fun registerRankGameScore(
+        @Field("gameId") gameId : Long,
+        @Field("player1WinCount") player1WinCount : Int,
+        @Field("player2WinCount") player2WinCount : Int
+    ) : APIResponse<Any>
+
+    @FormUrlEncoded
+    @POST("player/score/update")
+    suspend fun registerScore(
+        playerId : Long,
+        eloScore : Double
+    ) : APIResponse<Unit>
 }

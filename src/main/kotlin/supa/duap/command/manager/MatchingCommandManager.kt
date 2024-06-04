@@ -7,6 +7,7 @@ import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.entity.Member
+import dev.kord.core.entity.Role
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
@@ -16,10 +17,7 @@ import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
-import supa.duap.match.model.Game
-import supa.duap.match.model.GameType
-import supa.duap.match.model.MatchArgs
-import supa.duap.match.model.PlayerProfile
+import supa.duap.match.model.*
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
@@ -77,17 +75,19 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun registerProfile(interaction : ChatInputCommandInteraction) {
-        flow {
-            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
+        val author = interaction.user.takeIf { it is Member } as Member? ?: run {
+            throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
         }
-            .flatMapConcat { author ->
+
+        flow {
+            val list = author.roles.fold(mutableListOf<Role>()) { list, role -> list.apply { add(role) } }
+            emit(Grade.getFromRole(list))
+        }
+            .flatMapConcat { grade ->
                 matchMakingManager.createProfile(
                     author.id.value.toLong(),
-                    author.mention
+                    author.mention,
+                    grade
                 )
             }
             .catch { e ->
@@ -110,6 +110,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
             }
+            .take(1)
             .collect()
     }
 

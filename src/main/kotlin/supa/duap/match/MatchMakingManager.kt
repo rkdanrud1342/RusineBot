@@ -77,10 +77,10 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         return true
     }
 
-    suspend fun createProfile(id : Long, nickname : String?) = repo.createPlayer(id, nickname)
+    suspend fun createProfile(id : Long, nickname : String?, grade : Grade) = repo.createPlayer(id, nickname, grade)
     suspend fun getProfile(id : Long) = repo.getProfile(id)
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)
-    
+
     suspend fun registerGameScore(id : Long, p1Score : Int, p2Score : Int) : Flow<Pair<Game, Game?>> {
         val game = games[id] ?: throw Exception("진행중인 게임이 없습니다.")
 

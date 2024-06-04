@@ -2,13 +2,15 @@ package supa.duap.match
 
 import supa.duap.api.request
 import supa.duap.match.model.Game
+import supa.duap.match.model.Grade
 
 class MatchMakingRepository(private val api : MatchMakingApi) {
 
     suspend fun createPlayer(
         id : Long,
-        name : String?
-    ) = request { api.registerUser(id, name.orEmpty()) }
+        name : String?,
+        grade : Grade
+    ) = request { api.registerUser(id, name.orEmpty(), grade.ordinal) }
 
     suspend fun getPlayer(
         id : Long

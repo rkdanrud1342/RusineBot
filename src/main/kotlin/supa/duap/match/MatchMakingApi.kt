@@ -12,7 +12,8 @@ interface MatchMakingApi {
     @POST("player/register")
     suspend fun registerUser(
         @Field("id") id : Long,
-        @Field("playerName") name : String
+        @Field("playerName") name : String,
+        @Field("grade") grade : Int
     ) : APIResponse<PlayerProfile?>
 
     @GET("player/info")

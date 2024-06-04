@@ -1,5 +1,7 @@
 package supa.duap.match.model
 
+import dev.kord.core.entity.Role
+
 
 data class Player(
     val id : Long,
@@ -32,22 +34,40 @@ enum class Grade(val gradeName : String) {
     EMPEROR_OF_FIST("권황"),
     KING_LIKE("왕자"),
     STAR_FIST("권성"),
-    IMMORTAL("불멸자");
+    IMMORTAL("이모탈 Immortal"),
+    IMMORTAL_SSR("이모탈 SSR Immortal"),
+    IMMORTAL_UR("이모탈 UR Immortal"),
+    IMMORTAL_SUR("이모탈 SUR Immortal");
 
     operator fun minus(opGrade : Grade) : Int = this.ordinal - opGrade.ordinal
 
     companion object {
         fun getGrade(eloScore : Int) =
             when (eloScore) {
-                in Int.MIN_VALUE ..< 886 -> BEGINNER
-                in 886 ..< 962 -> FIGHTER
-                in 962 ..< 1038 -> MASTER_PROXY
-                in 1038 ..< 1114 -> EXPERT
-                in 1114 ..< 1190 -> KING_OF_FIST
-                in 1190 ..< 1266 -> EMPEROR_OF_FIST
-                in 1266 ..< 1342 -> KING_LIKE
-                in 1342 ..< 1418 -> STAR_FIST
-                else -> IMMORTAL
+                in 0..153 -> BEGINNER
+                in 154..230 -> FIGHTER
+                in 231..307 -> MASTER_PROXY
+                in 308..384 -> EXPERT
+                in 385..461 -> KING_OF_FIST
+                in 462..538 -> EMPEROR_OF_FIST
+                in 539..615 -> KING_LIKE
+                in 616..692 -> STAR_FIST
+                in 693..769-> IMMORTAL
+                in 770..846 -> IMMORTAL_SSR
+                in 847..923 -> IMMORTAL_UR
+                else -> IMMORTAL_SUR
             }
+
+        fun getFromRole(roles : List<Role>) : Grade {
+            roles.forEach { role ->
+                val grade = entries.find { role.name.contains(it.gradeName) }
+
+                if (grade != null) {
+                    return grade
+                }
+            }
+
+            return BEGINNER
+        }
     }
 }

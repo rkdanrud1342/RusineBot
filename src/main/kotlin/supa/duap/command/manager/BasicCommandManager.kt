@@ -1,7 +1,7 @@
 package supa.duap.command.manager
 
 import dev.kord.core.Kord
-import dev.kord.core.behavior.interaction.respondPublic
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import supa.duap.command.model.Command.BasicCommand
 
@@ -16,6 +16,6 @@ class BasicCommandManager(kord : Kord) : CommandManager<BasicCommand>(kord) {
         }
 
     private suspend fun responsePingCommand(interaction : ChatInputCommandInteraction) {
-        interaction.respondPublic { content = "퐁!"}
+        interaction.respondEphemeral { content = "퐁!"}
     }
 }

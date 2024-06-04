@@ -2,7 +2,7 @@ package supa.duap
 
 import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
-import dev.kord.core.behavior.interaction.respondPublic
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
@@ -38,6 +38,6 @@ class InteractionManager(
     }
 
     private suspend fun responseUnknownCommand(interaction : ChatInputCommandInteraction) {
-        interaction.respondPublic { content = "제가 모르는 명령어에요." }
+        interaction.respondEphemeral { content = "제가 모르는 명령어에요." }
     }
 }

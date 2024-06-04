@@ -15,6 +15,7 @@ import dev.kord.common.entity.optional.optional
 import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.channel.VoiceChannel
@@ -75,23 +76,23 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
 
     private suspend fun processPlayCommand(interaction : ChatInputCommandInteraction) {
         val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-            interaction.respondPublic { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
+            interaction.respondEphemeral { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
             return
         }
 
         val channel = author.getChannel() ?: run {
-            interaction.respondPublic { embed { description = "접속중이신 채널을 찾지 못했어요. 음성 채널에 입장한 후에 불러주세요." } }
+            interaction.respondEphemeral { embed { description = "접속중이신 채널을 찾지 못했어요. 음성 채널에 입장한 후에 불러주세요." } }
             return
         }
 
         val keyword = interaction.command.strings["키워드"] ?: run {
-            interaction.respondPublic { embed { description = "키워드가 없어요." } }
+            interaction.respondEphemeral { embed { description = "키워드가 없어요." } }
             return
         }
 
         val trackInfo = lavaPlayerManager.queryTrack("ytsearch: $keyword", author)
             ?: run {
-                interaction.respondPublic { embed { description = "음원을 찾지 못했어요." } }
+                interaction.respondEphemeral { embed { description = "음원을 찾지 못했어요." } }
                 return
             }
 
@@ -152,12 +153,12 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
 
     private suspend fun processSkipCommand(interaction : ChatInputCommandInteraction) {
         val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-            interaction.respondPublic { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
+            interaction.respondEphemeral { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
             return
         }
 
         val playerInfo = playerInfoMap[author.guildId] ?: run {
-            interaction.respondPublic { embed { description = "재생중인 음원이 없어요." } }
+            interaction.respondEphemeral { embed { description = "재생중인 음원이 없어요." } }
             return
         }
 
@@ -169,21 +170,21 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
 
     private suspend fun processListCommand(interaction : ChatInputCommandInteraction) {
         val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-            interaction.respondPublic { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
+            interaction.respondEphemeral { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
             return
         }
 
         val playerInfo = playerInfoMap[author.guildId] ?: run {
-            interaction.respondPublic { embed { description = "재생중인 음원이 없어요." } }
+            interaction.respondEphemeral { embed { description = "재생중인 음원이 없어요." } }
             return
         }
 
         val currentTrack = playerInfo.currentTrack ?: run {
-            interaction.respondPublic { embed { description = "재생중인 음원이 없어요." } }
+            interaction.respondEphemeral { embed { description = "재생중인 음원이 없어요." } }
             return
         }
 
-        interaction.respondPublic {
+        interaction.respondEphemeral {
             embed {
                 author {
                     this.name = "▶ [재생목록]"
@@ -218,24 +219,24 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
 
     private suspend fun processRemoveCommand(interaction : ChatInputCommandInteraction) {
         val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-            interaction.respondPublic {
+            interaction.respondEphemeral {
                 embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." }
             }
             return
         }
 
         val playerInfo = playerInfoMap[author.guildId] ?: run {
-            interaction.respondPublic { embed { description = "재생 목록이 없어요." } }
+            interaction.respondEphemeral { embed { description = "재생 목록이 없어요." } }
             return
         }
 
         val index = interaction.command.integers["순번"] ?: run {
-            interaction.respondPublic { embed { description = "음원 순번을 입력해주세요." } }
+            interaction.respondEphemeral { embed { description = "음원 순번을 입력해주세요." } }
             return
         }
 
         if (playerInfo.playlist.size <= index) {
-            interaction.respondPublic { embed { description = "음원을 찾지 못했어요." } }
+            interaction.respondEphemeral { embed { description = "음원을 찾지 못했어요." } }
             return
         }
 
@@ -253,12 +254,12 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
 
     private suspend fun processDropCommand(interaction : ChatInputCommandInteraction) {
         val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-            interaction.respondPublic { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
+            interaction.respondEphemeral { embed { description = "누가 절 부르신거죠? 부르신 분을 못찾겠어요." } }
             return
         }
 
         val playerInfo = playerInfoMap[author.guildId] ?: run {
-            interaction.respondPublic { embed { description = "재생 목록이 없어요." } }
+            interaction.respondEphemeral { embed { description = "재생 목록이 없어요." } }
             return
         }
 

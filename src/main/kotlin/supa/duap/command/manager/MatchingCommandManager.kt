@@ -4,6 +4,7 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.optional
 import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
@@ -11,12 +12,11 @@ import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
+import supa.duap.match.model.Game
 import supa.duap.match.model.GameType
 import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.PlayerProfile
@@ -91,12 +91,12 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 )
             }
             .catch { e ->
-                interaction.respondPublic { embed { description = e.message ?: "프로필 생성에 실패했어요." } }
+                interaction.respondEphemeral { embed { description = e.message ?: "프로필 생성에 실패했어요." } }
             }
             .take(1)
             .onEach { player ->
                 if (player == null) {
-                    interaction.respondPublic { embed { description = "프로필 생성에 실패했어요." } }
+                    interaction.respondEphemeral { embed { description = "프로필 생성에 실패했어요." } }
                     return@onEach
                 }
 
@@ -128,15 +128,15 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 matchMakingManager.getProfile(user.id.value.toLong())
             }
             .catch { e ->
-                interaction.respondPublic { embed { description = e.message ?: "프로필이 등록되지 않았어요." } }
+                interaction.respondEphemeral { embed { description = e.message ?: "프로필이 등록되지 않았어요." } }
             }
             .onEach { player ->
                 if (player == null) {
-                    interaction.respondPublic { embed { description = "프로필이 등록되지 않았어요." } }
+                    interaction.respondEphemeral { embed { description = "프로필이 등록되지 않았어요." } }
                     return@onEach
                 }
 
-                interaction.respondPublic {
+                interaction.respondEphemeral {
                     embed {
                         description = player.print()
                     }
@@ -160,7 +160,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             }
             .onEach { player ->
                 if (player == null) {
-                    interaction.respondPublic { embed { description = "프로필이 등록되지 않았어요." } }
+                    interaction.respondEphemeral { embed { description = "프로필이 등록되지 않았어요." } }
                     return@onEach
                 }
 
@@ -168,33 +168,29 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 val matchArgs = MatchArgs(player.id, rankAvailableRange)
 
                 matchMakingManager.addOnGameCreateListener(key = player) { game ->
-                    coroutineScope {
-                        launch {
-                            if (game == null) {
-                                interaction.channel.createMessage {
-                                    embed {
-                                        description = "${player.name} 상대방을 찾지 못해 매칭이 취소되었어요."
-                                    }
-                                }
-                                return@launch
-                            }
-
-                            try {
-                                val p1Mention = author?.guild?.getMemberOrNull(Snowflake(game.player1.id))?.mention
-                                val p2Mention = author?.guild?.getMemberOrNull(Snowflake(game.player2.id))?.mention
-
-                                interaction.channel.createMessage {
-                                    embed {
-                                        author {
-                                            name = "매칭됐어요."
-                                        }
-                                        description = "1P : $p1Mention\n2P : $p2Mention\n\n 방을 생성한 후 게임을 진행해주세요."
-                                    }
-                                }
-                            } catch (e : Exception) {
-                                e.printStackTrace()
+                    if (game == null) {
+                        interaction.channel.createMessage {
+                            embed {
+                                description = "${player.name} 상대방을 찾지 못해 매칭이 취소되었어요."
                             }
                         }
+                        return@addOnGameCreateListener
+                    }
+
+                    try {
+                        val p1Mention = author?.guild?.getMemberOrNull(Snowflake(game.player1.id))?.mention
+                        val p2Mention = author?.guild?.getMemberOrNull(Snowflake(game.player2.id))?.mention
+
+                        interaction.channel.createMessage {
+                            embed {
+                                author {
+                                    name = "매칭됐어요."
+                                }
+                                description = "1P : $p1Mention\n2P : $p2Mention\n\n 방을 생성한 후 게임을 진행해주세요."
+                            }
+                        }
+                    } catch (e : Exception) {
+                        e.printStackTrace()
                     }
                 }
 
@@ -215,7 +211,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             }
             .catch { e ->
                 e.printStackTrace()
-                interaction.respondPublic { embed { description = e.message ?: "매칭 등록에 실패했어요." } }
+                interaction.respondEphemeral { embed { description = e.message ?: "매칭 등록에 실패했어요." } }
             }
             .collect()
     }
@@ -238,7 +234,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 matchMakingManager.registerGameScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
             }
             .catch { e ->
-                interaction.respondPublic { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
+                interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
             }
             .collect {
                 interaction.respondPublic { embed { description = "게임 결과를 저장했어요." } }

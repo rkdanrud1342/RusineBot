@@ -233,12 +233,38 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 matchMakingManager.registerGameScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
             }
+            .onEach { (oldGame, newGame) ->
+                if (newGame == null) {
+                    throw Exception()
+                }
+
+                interaction.respondPublic {
+                    embed {
+                        description = buildString {
+                            appendLine("게임 결과를 저장했어요.")
+                            appendLine()
+
+                            append("${newGame.player1.name} (${if (newGame.player1WinCount > newGame.player2WinCount) {"승"} else {"패"}})")
+
+                            if (newGame is Game.RankGame) {
+                                append(" 점수 : ${newGame.player1.eloScore} (${newGame.player1.eloScore - oldGame.player1.eloScore})")
+                            }
+
+                            appendLine()
+
+                            append("${newGame.player2.name} (${if (newGame.player1WinCount < newGame.player2WinCount) {"승"} else {"패"}})")
+
+                            if (newGame is Game.RankGame) {
+                                append(" 점수 : ${newGame.player2.eloScore} (${newGame.player2.eloScore - oldGame.player2.eloScore})")
+                            }
+                        }
+                    }
+                }
+            }
             .catch { e ->
                 interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
             }
-            .collect {
-                interaction.respondPublic { embed { description = "게임 결과를 저장했어요." } }
-            }
+            .collect()
     }
 
     private fun PlayerProfile.print() =

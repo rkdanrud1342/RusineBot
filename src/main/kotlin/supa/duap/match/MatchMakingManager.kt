@@ -81,13 +81,15 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     suspend fun getProfile(id : Long) = repo.getProfile(id)
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)
     
-    suspend fun registerGameScore(id : Long, p1Score : Int, p2Score : Int) : Flow<Any?> {
+    suspend fun registerGameScore(id : Long, p1Score : Int, p2Score : Int) : Flow<Pair<Game, Game?>> {
         val game = games[id] ?: throw Exception("진행중인 게임이 없습니다.")
 
         return repo.registerGameScore(game, p1Score, p2Score)
-                .onEach {
+                .map {
                     games.remove(game.player1.id)
                     games.remove(game.player2.id)
+
+                    game to it
                 }
     }
 

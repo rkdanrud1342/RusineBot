@@ -41,7 +41,7 @@ interface MatchMakingApi {
         @Field("gameId") gameId : Long,
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
-    ) : APIResponse<Any>
+    ) : APIResponse<Game.CasualGame?>
 
     @GET("match/casual/resent10")
     suspend fun getResent10CasualMatch(
@@ -61,7 +61,7 @@ interface MatchMakingApi {
         @Field("gameId") gameId : Long,
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
-    ) : APIResponse<Any>
+    ) : APIResponse<Game.RankGame?>
 
     @FormUrlEncoded
     @POST("player/score/update")

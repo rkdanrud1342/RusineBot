@@ -3,8 +3,8 @@ package supa.duap.match
 import retrofit2.http.*
 import supa.duap.api.APIResponse
 import supa.duap.match.model.Game
-import supa.duap.match.model.PlayerProfile
 import supa.duap.match.model.Player
+import supa.duap.match.model.PlayerProfile
 
 interface MatchMakingApi {
 
@@ -25,9 +25,6 @@ interface MatchMakingApi {
         @Query("id") id : Long
     ) : APIResponse<PlayerProfile?>
 
-    @GET("player/all")
-    suspend fun getAllPlayers() : APIResponse<List<PlayerProfile>?>
-
     @FormUrlEncoded
     @POST("match/casual/create")
     suspend fun createCasualGame(
@@ -43,11 +40,6 @@ interface MatchMakingApi {
         @Field("player2WinCount") player2WinCount : Int
     ) : APIResponse<Game.CasualGame?>
 
-    @GET("match/casual/resent10")
-    suspend fun getResent10CasualMatch(
-        @Query("playerId") id : Long
-    ) : APIResponse<List<Game.CasualGame>?>
-
     @FormUrlEncoded
     @POST("match/rank/create")
     suspend fun createRankGame(
@@ -62,11 +54,4 @@ interface MatchMakingApi {
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
     ) : APIResponse<Game.RankGame?>
-
-    @FormUrlEncoded
-    @POST("player/score/update")
-    suspend fun registerScore(
-        playerId : Long,
-        eloScore : Double
-    ) : APIResponse<Unit>
 }

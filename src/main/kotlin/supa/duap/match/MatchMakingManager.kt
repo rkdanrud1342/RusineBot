@@ -112,12 +112,12 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         val p1Grade = p1.first.grade
         val p2Grade = p2.first.grade
 
-        val p1Phase = p1.second.phase
-        val p2Phase = p2.second.phase
+        val p1AvailableRange = p1.second.rankAvailableRange
+        val p2AvailableRange = p2.second.rankAvailableRange
 
         val diff = abs(p1Grade - p2Grade)
 
-        return (p1Phase < 0 || diff <= p1Phase) && (p2Phase < 0 || diff <= p2Phase)
+        return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
     }
 
     private fun isRegistered(player : Player, matchArgs : MatchArgs, gameType : GameType) =

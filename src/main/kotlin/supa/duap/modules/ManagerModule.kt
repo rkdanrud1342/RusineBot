@@ -11,10 +11,11 @@ import supa.duap.match.MatchMakingManager
 @KordVoice
 val managerModule = module {
     single { BasicCommandManager(get()) }
-    single { MusicCommandManager(get()) }
+//    single { MusicCommandManager(get()) }
     single { MatchingCommandManager(get()) }
 
     single { MatchMakingManager(get()) }
 
-    single { InteractionManager(get(), get(), get(), get()) }
+//    single { InteractionManager(get(), get(), get(), get()) }
+    single { InteractionManager(get(), get(), get()) }
 }

@@ -40,7 +40,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName2,
-                description = "매칭 대기시간을 분단위로 설정해요."
+                description = "매칭 대기시간을 분단위로 설정해요.",
+                builder = {
+                    this.minValue = 0
+                    this.maxValue = 10
+                }
             ).optional()
         }
 
@@ -52,7 +56,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName2,
-                description = "매칭 대기시간을 분단위로 설정해요."
+                description = "매칭 대기시간을 분단위로 설정해요.",
+                builder = {
+                    this.minValue = 0
+                    this.maxValue = 10
+                }
             ).optional()
         }
 
@@ -180,7 +188,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 }
 
                 val rankAvailableRange = interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName1]?.toInt() ?: 1
-                val awaitTimeMinutes = interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: -1
+                val awaitTimeMinutes = interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 0
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 

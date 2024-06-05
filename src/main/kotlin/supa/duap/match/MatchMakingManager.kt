@@ -121,10 +121,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     private fun isRegistered(player : Player, matchArgs : MatchArgs, gameType : GameType) =
-        matchArgs == when (gameType) {
-            CASUAL -> casualGamePool[player]
-            RANK -> rankGamePool[player]
-        }
+        matchArgs == casualGamePool[player] || matchArgs == rankGamePool[player]
 
     private fun makeChannel(gameType : GameType) {
         val (channel, pool) = when (gameType) {

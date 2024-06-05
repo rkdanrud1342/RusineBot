@@ -12,7 +12,7 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.command.model.Command.MatchingCommand
@@ -93,7 +93,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             .catch { e ->
                 interaction.respondEphemeral { embed { description = e.message ?: "프로필 생성에 실패했어요." } }
             }
-            .take(1)
             .onEach { player ->
                 if (player == null) {
                     interaction.respondEphemeral { embed { description = "프로필 생성에 실패했어요." } }

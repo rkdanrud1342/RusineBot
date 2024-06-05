@@ -44,17 +44,17 @@ enum class Grade(val gradeName : String) {
     companion object {
         fun getGrade(eloScore : Int) =
             when (eloScore) {
-                in 0..153 -> BEGINNER
-                in 154..230 -> FIGHTER
-                in 231..307 -> MASTER_PROXY
-                in 308..384 -> EXPERT
-                in 385..461 -> KING_OF_FIST
-                in 462..538 -> EMPEROR_OF_FIST
-                in 539..615 -> KING_LIKE
-                in 616..692 -> STAR_FIST
-                in 693..769-> IMMORTAL
-                in 770..846 -> IMMORTAL_SSR
-                in 847..923 -> IMMORTAL_UR
+                in 0..1530 -> BEGINNER
+                in 1531..2300 -> FIGHTER
+                in 2301..3070 -> MASTER_PROXY
+                in 3071..3840 -> EXPERT
+                in 3841..4610 -> KING_OF_FIST
+                in 4611..5380 -> EMPEROR_OF_FIST
+                in 5381..6150 -> KING_LIKE
+                in 6151..6920 -> STAR_FIST
+                in 6921..7690-> IMMORTAL
+                in 7691..8460 -> IMMORTAL_SSR
+                in 8461..9230 -> IMMORTAL_UR
                 else -> IMMORTAL_SUR
             }
 

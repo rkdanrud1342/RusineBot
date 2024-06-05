@@ -34,14 +34,25 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
         addCommand(MatchingCommand.CASUAL_GAME) {
             integer(
-                name = MatchingCommand.CASUAL_GAME.optionName1,
+                name = MatchingCommand.MatchRegisterCommand.optionName1,
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
             ).optional()
+
+            integer(
+                name = MatchingCommand.MatchRegisterCommand.optionName2,
+                description = "매칭 대기시간을 분단위로 설정해요."
+            ).optional()
         }
+
         addCommand(MatchingCommand.RANK_GAME) {
             integer(
-                name = MatchingCommand.RANK_GAME.optionName1,
+                name = MatchingCommand.MatchRegisterCommand.optionName1,
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
+            ).optional()
+
+            integer(
+                name = MatchingCommand.MatchRegisterCommand.optionName2,
+                description = "매칭 대기시간을 분단위로 설정해요."
             ).optional()
         }
 
@@ -168,8 +179,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     return@onEach
                 }
 
-                val rankAvailableRange = interaction.command.integers["등급 허용 한도"]?.toInt() ?: 1
-                val matchArgs = MatchArgs(player.id, rankAvailableRange)
+                val rankAvailableRange = interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName1]?.toInt() ?: 1
+                val awaitTimeMinutes = interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: -1
+
+                val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
                 matchMakingManager.addOnGameCreateListener(key = player) { game ->
                     if (game == null) {

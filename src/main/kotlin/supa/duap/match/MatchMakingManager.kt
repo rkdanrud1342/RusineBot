@@ -30,20 +30,21 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, gameType : GameType) {
-        if (p.second.phase >= 5) {
-            val player1 = p.first
-            awaitingJobs.remove(player1)?.takeIf { it.isActive }?.cancel()
-            when (gameType) {
-                RANK -> rankGamePool
-                CASUAL -> casualGamePool
-            }.remove(player1)
-            matchResultListeners.remove(player1)?.invoke(null)
-            return
-        }
-
         awaitingJobs[p.first] = matchMakingScope.launch {
-            p.second.phase++
             delay(30000L)
+
+            p.second.phase++
+
+            if (p.second.isAwaitOver()) {
+                val player1 = p.first
+                when (gameType) {
+                    RANK -> rankGamePool
+                    CASUAL -> casualGamePool
+                }.remove(player1)
+                matchResultListeners.remove(player1)?.invoke(null)
+                return@launch
+            }
+
             when (gameType) {
                 RANK -> rankGameChannel
                 CASUAL -> casualGameChannel

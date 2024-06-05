@@ -3,6 +3,7 @@ package supa.duap.match.model
 data class MatchArgs(
     val playerId : Any,
     val rankAvailableRange : Int = 1,
+    val awaitTimeMinutes : Int = -1,
     var phase : Int = 0
 ) {
     override fun equals(other : Any?) : Boolean {
@@ -19,4 +20,6 @@ data class MatchArgs(
         result = 31 * result + rankAvailableRange
         return result
     }
+
+    fun isAwaitOver() : Boolean = phase * 30 >= awaitTimeMinutes * 60
 }

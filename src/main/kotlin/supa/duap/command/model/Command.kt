@@ -57,19 +57,21 @@ sealed class Command(
             const val optionName1 = "사용자"
         }
 
+        sealed interface MatchRegisterCommand {
+            companion object {
+                const val optionName1 = "등급허용한도"
+                const val optionName2 = "대기시간"
+            }
+        }
+
         data object RANK_GAME : MatchingCommand(
             key = "랭크매치",
             description = "랭크매치 대기열에 등록합니다."
-        ) {
-            const val optionName1 = "등급허용한도"
-        }
-
+        ), MatchRegisterCommand
         data object CASUAL_GAME : MatchingCommand(
             key = "캐주얼매치",
             description = "캐주얼매치 대기열에 등록합니다."
-        ) {
-            const val optionName1 = "등급허용한도"
-        }
+        ), MatchRegisterCommand
 
         data object MATCH_CANCEL : MatchingCommand(
             key = "매칭취소",

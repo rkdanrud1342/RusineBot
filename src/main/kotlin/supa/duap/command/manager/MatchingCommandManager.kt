@@ -44,6 +44,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
             ).optional()
         }
+
+        addCommand(MatchingCommand.MATCH_CANCEL)
+
         addCommand(MatchingCommand.RECORD_GAME_RESULT) {
             integer(
                 name = MatchingCommand.RECORD_GAME_RESULT.optionName1,
@@ -69,6 +72,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             MatchingCommand.SHOW_PROFILE -> showProfile(interaction)
             MatchingCommand.CASUAL_GAME -> registerGamePool(interaction, GameType.CASUAL)
             MatchingCommand.RANK_GAME -> registerGamePool(interaction, GameType.RANK)
+            MatchingCommand.MATCH_CANCEL -> unregisterGamePool(interaction)
             MatchingCommand.RECORD_GAME_RESULT -> registerGameResult(interaction)
         }
     }
@@ -194,7 +198,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                if (!matchMakingManager.addQueue(player, matchArgs, gameType)) {
+                if (!matchMakingManager.enqueue(player, matchArgs, gameType)) {
                     throw Exception("이미 매칭에 등록되어 있어요.")
                 }
 
@@ -205,13 +209,48 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
 
                     embed {
-                        description = "${author?.mention}님이 $gameTypeName 매칭에 등록했어요."
+                        description = "${player.name}님이 $gameTypeName 매칭에 등록했어요."
                     }
                 }
             }
             .catch { e ->
                 e.printStackTrace()
                 interaction.respondEphemeral { embed { description = e.message ?: "매칭 등록에 실패했어요." } }
+            }
+            .collect()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun unregisterGamePool(interaction : ChatInputCommandInteraction) {
+        val author = interaction.user.takeIf { it is Member } as Member?
+
+        flow {
+            if (author == null) {
+                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
+            }
+
+            emit(author)
+        }
+            .flatMapConcat {
+                matchMakingManager.getPlayer(it.id.value.toLong())
+            }
+            .onEach { player ->
+                if (player == null) {
+                    interaction.respondEphemeral { embed { description = "프로필이 등록되지 않았어요." } }
+                    return@onEach
+                }
+
+                matchMakingManager.dequeue(player)
+
+                interaction.respondPublic {
+                    embed {
+                        description = "${player.name}님이 매칭을 취소했어요."
+                    }
+                }
+            }
+            .catch { e ->
+                e.printStackTrace()
+                interaction.respondEphemeral { embed { description = e.message ?: "매칭 취소에 실패했어요." } }
             }
             .collect()
     }

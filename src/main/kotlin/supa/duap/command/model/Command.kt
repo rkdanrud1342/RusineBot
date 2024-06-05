@@ -71,6 +71,11 @@ sealed class Command(
             const val optionName1 = "등급허용한도"
         }
 
+        data object MATCH_CANCEL : MatchingCommand(
+            key = "매칭취소",
+            description = "매치를 취소합니다."
+        )
+
         data object RECORD_GAME_RESULT : MatchingCommand(
             key = "점수등록",
             description = "매치 종료 후 스코어를 등록합니다."

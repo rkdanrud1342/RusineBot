@@ -55,7 +55,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         matchResultListeners[key] = listener
     }
 
-    fun addQueue(player : Player, matchArgs : MatchArgs, gameType : GameType) : Boolean {
+    fun enqueue(player : Player, matchArgs : MatchArgs, gameType : GameType) : Boolean {
         if (isRegistered(player, matchArgs, gameType)) {
             return false
         }
@@ -75,6 +75,12 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         }
 
         return true
+    }
+
+    fun dequeue(player : Player) {
+        casualGamePool.remove(player)
+        rankGamePool.remove(player)
+        awaitingJobs[player]?.cancel()
     }
 
     suspend fun createProfile(id : Long, nickname : String?, grade : Grade) = repo.createPlayer(id, nickname, grade)

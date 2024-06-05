@@ -57,7 +57,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     fun enqueue(player : Player, matchArgs : MatchArgs, gameType : GameType) : Boolean {
-        if (isRegistered(player, matchArgs)) {
+        if (isRegistered(player)) {
             return false
         }
 
@@ -127,8 +127,8 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
     }
 
-    private fun isRegistered(player : Player, matchArgs : MatchArgs) =
-        matchArgs == casualGamePool[player] || matchArgs == rankGamePool[player]
+    private fun isRegistered(player : Player) =
+        casualGamePool[player] != null || rankGamePool[player] != null
 
     private fun makeChannel(gameType : GameType) {
         val (channel, pool) = when (gameType) {

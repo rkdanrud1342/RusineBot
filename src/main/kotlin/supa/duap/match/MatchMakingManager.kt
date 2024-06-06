@@ -75,6 +75,9 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                 rankGamePool.remove(player) != null ||
                 awaitingJobs[player]?.also { it.cancel() } != null
 
+    fun isRegistered(player : Player) : Boolean =
+        casualGamePool[player] != null || rankGamePool[player] != null
+
     suspend fun createProfile(id : Long, nickname : String?, grade : Grade) = repo.createPlayer(id, nickname, grade)
     suspend fun getProfile(id : Long) = repo.getProfile(id)
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)

@@ -197,6 +197,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 matchMakingManager.getRunningGame(player.id).map { player to it }
             }
             .onEach { (player, runningGame) ->
+                if (matchMakingManager.isRegistered(player)) {
+                    throw Exception("이미 대기열에 등록되어있어요.")
+                }
+
                 if (runningGame != null) {
                     val other = if (runningGame.player1.id != player.id) {
                         runningGame.player1

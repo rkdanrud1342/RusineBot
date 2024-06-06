@@ -24,10 +24,10 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
     ) = request { api.getRunningGame(playerId) }
 
     suspend fun createGame(
-        gameType : String,
+        typeCode : Int,
         player1Id : Long,
         player2Id : Long,
-    ) = request { api.createGame(gameType, player1Id, player2Id) }
+    ) = request { api.createGame(typeCode, player1Id, player2Id) }
 
     suspend fun registerGameScore(
         playerId : Long,

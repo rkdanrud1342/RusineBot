@@ -6,5 +6,7 @@ data class RunningGame(
     val player2 : PlayerProfile,
     val player1WinCount : Int = 0,
     val player2WinCount : Int = 0,
-    val gameType : GameType
-)
+    private val gameTypeCode : Int
+) {
+    val gameType = GameType.typeCodeOf(gameTypeCode)
+}

@@ -3,6 +3,8 @@ package supa.duap.match
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import supa.duap.BaseCoroutine
 import supa.duap.match.model.*
 import supa.duap.match.model.GameType.*
@@ -10,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
 class MatchMakingManager(private val repo : MatchMakingRepository) {
+    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
+
     private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
     private val casualGamePool : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
@@ -86,15 +90,15 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     suspend fun getPlayerRanking(playerId : Long) = repo.getPlayerRanking(playerId)
 
     private suspend fun makeGame(
-        type : GameType,
+        gameType : GameType,
         player1 : Player,
         player2 : Player
-    ) = repo.createGame(type.name, player1.id, player2.id)
+    ) = repo.createGame(gameType.typeCode, player1.id, player2.id)
         .take(1)
         .catch { emit(null) }
         .single()
 
-    private fun checkGameArgs(
+    private fun canBothPlayerBeMatched(
         p1 : Pair<Player, MatchArgs>,
         p2 : Pair<Player, MatchArgs>
     ) : Boolean {
@@ -106,7 +110,13 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
         val diff = abs(p1Grade - p2Grade)
 
-        return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
+        logger.debug("diff : $diff, p1AvailableRange : $p1AvailableRange, p2AvailableRange : $p2AvailableRange")
+
+        val canBeMatched = (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
+
+        logger.debug("canBeMatched : $canBeMatched")
+
+        return canBeMatched
     }
 
     private fun makeChannel(gameType : GameType) {
@@ -124,9 +134,13 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                 var player2MatchArgsPair : Pair<Player, MatchArgs>? = null
 
                 for (e in pool) {
-                    if (player1MatchArgsPair.first == e.key || !checkGameArgs(player1MatchArgsPair, e.toPair())) {
-                        // not matched. compare with next player.
+                    if (player1MatchArgsPair.first == e.key) {
+                        // same player
                         continue
+                    }
+
+                    if (!canBothPlayerBeMatched(player1MatchArgsPair, e.toPair())) {
+                        // cannot be matched
                     }
 
                     // matched. init player2 info and break loop.

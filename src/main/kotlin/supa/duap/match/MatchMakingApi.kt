@@ -27,7 +27,7 @@ interface MatchMakingApi {
     @FormUrlEncoded
     @POST("match/create")
     suspend fun createGame(
-        @Field("gameType") gameType : String,
+        @Field("typeCode") typeCode : Int,
         @Field("player1Id") player1Id : Long,
         @Field("player2Id") player2Id : Long
     ) : APIResponse<RunningGame?>

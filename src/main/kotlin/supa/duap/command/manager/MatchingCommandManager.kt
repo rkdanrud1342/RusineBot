@@ -14,6 +14,8 @@ import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
@@ -22,6 +24,8 @@ import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.PlayerProfile
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
+    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
+
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
 
     override suspend fun registerCommand() {
@@ -215,6 +219,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName1]?.toInt() ?: 1
                 val awaitTimeMinutes =
                     interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 0
+
+                logger.debug("player : ${author?.globalName}, rankAvailableRange : $rankAvailableRange, awaitTimeMinutes : $awaitTimeMinutes")
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 

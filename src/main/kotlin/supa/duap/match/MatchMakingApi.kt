@@ -2,10 +2,7 @@ package supa.duap.match
 
 import retrofit2.http.*
 import supa.duap.api.APIResponse
-import supa.duap.match.model.GameResult
-import supa.duap.match.model.Player
-import supa.duap.match.model.PlayerProfile
-import supa.duap.match.model.RunningGame
+import supa.duap.match.model.*
 
 interface MatchMakingApi {
 
@@ -47,4 +44,9 @@ interface MatchMakingApi {
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
     ) : APIResponse<GameResult?>
+
+    @GET("player/ranking")
+    suspend fun getPlayerRanking(
+        @Query("playerId") playerId : Long
+    ) : APIResponse<PlayerRank?>
 }

@@ -68,6 +68,7 @@ sealed class Command(
             key = "랭크매치",
             description = "랭크매치 대기열에 등록합니다."
         ), MatchRegisterCommand
+
         data object CASUAL_GAME : MatchingCommand(
             key = "캐주얼매치",
             description = "캐주얼매치 대기열에 등록합니다."
@@ -90,5 +91,10 @@ sealed class Command(
             const val optionName1 = "p1승리수"
             const val optionName2 = "p2승리수"
         }
+
+        data object SHOW_RANKING : MatchingCommand(
+            key = "랭킹보기",
+            description = "랭킹 리스트 및 본인의 랭킹을 보여줘요."
+        )
     }
 }

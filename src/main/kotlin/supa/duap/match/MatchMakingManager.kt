@@ -80,6 +80,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)
     suspend fun getRunningGame(playerId : Long) = repo.getRunningGame(playerId)
     suspend fun registerGameScore(playerId : Long, p1Score : Int, p2Score : Int) = repo.registerGameScore(playerId, p1Score, p2Score)
+    suspend fun getPlayerRanking(playerId : Long) = repo.getPlayerRanking(playerId)
 
     private suspend fun makeGame(
         type : GameType,

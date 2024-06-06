@@ -25,6 +25,12 @@ data class PlayerProfile(
         get() = Grade.getGrade(eloScore)
 }
 
+data class PlayerRank(
+    val top10 : List<Player>,
+    val player : Player,
+    val rank : Int
+)
+
 enum class Grade(val gradeName : String) {
     BEGINNER("입문자"),
     FIGHTER("격투가"),

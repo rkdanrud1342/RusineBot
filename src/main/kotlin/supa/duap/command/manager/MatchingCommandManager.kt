@@ -87,6 +87,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 }
             )
         }
+
+        addCommand(MatchingCommand.SHOW_RANKING)
     }
 
     override suspend fun responseCommand(command : MatchingCommand, interaction : ChatInputCommandInteraction) {
@@ -98,6 +100,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             MatchingCommand.MATCH_INFO -> showMatchInfo(interaction)
             MatchingCommand.MATCH_CANCEL -> unregisterGamePool(interaction)
             MatchingCommand.RECORD_GAME_RESULT -> registerGameResult(interaction)
+            MatchingCommand.SHOW_RANKING -> showRanking(interaction)
         }
     }
 
@@ -380,6 +383,45 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 }
             }
             .catch { e ->
+                interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
+            }
+            .collect()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun showRanking(interaction : ChatInputCommandInteraction) {
+        flow {
+            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
+                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
+            }
+
+            emit(author)
+        }
+            .flatMapConcat {
+                matchMakingManager.getPlayerRanking(it.id.value.toLong())
+            }
+            .onEach { rankInfo ->
+                if (rankInfo == null) {
+                    throw Exception("랭킹 정보 획득에 실패했습니다.")
+                }
+
+                interaction.respondEphemeral {
+                    embed {
+                        description = buildString {
+                            rankInfo.top10.sortedByDescending { it.eloScore }.forEachIndexed { index, player ->
+                                appendLine("${index + 1}위 : ${player.name} ${player.eloScore}점")
+                            }
+
+                            if (rankInfo.rank > 10) {
+                                appendLine()
+                                append("${rankInfo.rank}위 : ${rankInfo.player.name} ${rankInfo.player.eloScore}점")
+                            }
+                        }
+                    }
+                }
+            }
+            .catch { e ->
+                e.printStackTrace()
                 interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
             }
             .collect()

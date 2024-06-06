@@ -73,6 +73,11 @@ sealed class Command(
             description = "캐주얼매치 대기열에 등록합니다."
         ), MatchRegisterCommand
 
+        data object MATCH_INFO : MatchingCommand(
+            key = "매치정보",
+            description = "현재 매치된 게임 정보를 표시합니다."
+        )
+
         data object MATCH_CANCEL : MatchingCommand(
             key = "매칭취소",
             description = "매치를 취소합니다."

@@ -20,9 +20,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
-    private val matchResultListeners = mutableMapOf<Player, (suspend (Game?) -> Unit)?>()
-
-    private val games : MutableMap<Long, Game> = ConcurrentHashMap()
+    private val matchResultListeners = mutableMapOf<Player, (suspend (RunningGame?) -> Unit)?>()
 
     init {
         makeChannel(CASUAL)
@@ -52,15 +50,11 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         }
     }
 
-    fun addOnGameCreateListener(key : Player, listener : (suspend (Game?) -> Unit)?) {
+    fun addOnGameCreateListener(key : Player, listener : (suspend (RunningGame?) -> Unit)?) {
         matchResultListeners[key] = listener
     }
 
-    fun enqueue(player : Player, matchArgs : MatchArgs, gameType : GameType) : Boolean {
-        if (isRegistered(player)) {
-            return false
-        }
-
+    fun enqueue(player : Player, matchArgs : MatchArgs, gameType : GameType) {
         matchMakingScope.launch {
             when (gameType) {
                 CASUAL -> {
@@ -74,40 +68,24 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                 }
             }
         }
-
-        return true
     }
 
-    fun dequeue(player : Player) {
-        casualGamePool.remove(player)
-        rankGamePool.remove(player)
-        awaitingJobs[player]?.cancel()
-    }
+    fun dequeue(player : Player) : Boolean =
+        casualGamePool.remove(player) != null ||
+                rankGamePool.remove(player) != null ||
+                awaitingJobs[player]?.also { it.cancel() } != null
 
     suspend fun createProfile(id : Long, nickname : String?, grade : Grade) = repo.createPlayer(id, nickname, grade)
     suspend fun getProfile(id : Long) = repo.getProfile(id)
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)
-
-    suspend fun registerGameScore(id : Long, p1Score : Int, p2Score : Int) : Flow<Pair<Game, Game?>> {
-        val game = games[id] ?: throw Exception("진행중인 게임이 없습니다.")
-
-        return repo.registerGameScore(game, p1Score, p2Score)
-                .map {
-                    games.remove(game.player1.id)
-                    games.remove(game.player2.id)
-
-                    game to it
-                }
-    }
+    suspend fun getRunningGame(playerId : Long) = repo.getRunningGame(playerId)
+    suspend fun registerGameScore(playerId : Long, p1Score : Int, p2Score : Int) = repo.registerGameScore(playerId, p1Score, p2Score)
 
     private suspend fun makeGame(
-        p1 : Pair<Player, MatchArgs>,
-        p2 : Pair<Player, MatchArgs>,
-        type : GameType
-    ) : Game? = when (type) {
-        CASUAL -> repo.createCasualGame(p1.first.id, p2.first.id)
-        RANK -> repo.createRankGame(player1Id = p1.first.id, player2Id = p2.first.id)
-    }
+        type : GameType,
+        player1 : Player,
+        player2 : Player
+    ) = repo.createGame(type.name, player1.id, player2.id)
         .take(1)
         .catch { emit(null) }
         .single()
@@ -126,9 +104,6 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
         return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
     }
-
-    private fun isRegistered(player : Player) =
-        casualGamePool[player] != null || rankGamePool[player] != null
 
     private fun makeChannel(gameType : GameType) {
         val (channel, pool) = when (gameType) {
@@ -166,10 +141,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     pool.remove(player1)
                     pool.remove(player2)
 
-                    val game = makeGame(player1MatchArgsPair, it, gameType) ?: return@let null
-
-                    games[player1.id] = game
-                    games[player2.id] = game
+                    val game = makeGame(gameType, player1, player2) ?: return@let null
 
                     matchResultListeners.remove(player1)?.invoke(game)
                     matchResultListeners.remove(player2)

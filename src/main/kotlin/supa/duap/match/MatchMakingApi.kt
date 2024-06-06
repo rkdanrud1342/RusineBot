@@ -2,9 +2,10 @@ package supa.duap.match
 
 import retrofit2.http.*
 import supa.duap.api.APIResponse
-import supa.duap.match.model.Game
+import supa.duap.match.model.GameResult
 import supa.duap.match.model.Player
 import supa.duap.match.model.PlayerProfile
+import supa.duap.match.model.RunningGame
 
 interface MatchMakingApi {
 
@@ -27,32 +28,23 @@ interface MatchMakingApi {
     ) : APIResponse<PlayerProfile?>
 
     @FormUrlEncoded
-    @POST("match/casual/create")
-    suspend fun createCasualGame(
+    @POST("match/create")
+    suspend fun createGame(
+        @Field("gameType") gameType : String,
         @Field("player1Id") player1Id : Long,
         @Field("player2Id") player2Id : Long
-    ) : APIResponse<Game.CasualGame?>
+    ) : APIResponse<RunningGame?>
+
+    @GET("match/running")
+    suspend fun getRunningGame(
+        @Query("playerId") playerId : Long
+    ) : APIResponse<RunningGame?>
 
     @FormUrlEncoded
-    @POST("match/casual/score")
-    suspend fun registerCasualGameScore(
-        @Field("gameId") gameId : Long,
+    @POST("match/score")
+    suspend fun registerGameScore(
+        @Field("playerId") playerId : Long,
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
-    ) : APIResponse<Game.CasualGame?>
-
-    @FormUrlEncoded
-    @POST("match/rank/create")
-    suspend fun createRankGame(
-        @Field("player1Id") player1Id : Long,
-        @Field("player2Id") player2Id : Long
-    ) : APIResponse<Game.RankGame?>
-
-    @FormUrlEncoded
-    @POST("match/rank/score")
-    suspend fun registerRankGameScore(
-        @Field("gameId") gameId : Long,
-        @Field("player1WinCount") player1WinCount : Int,
-        @Field("player2WinCount") player2WinCount : Int
-    ) : APIResponse<Game.RankGame?>
+    ) : APIResponse<GameResult?>
 }

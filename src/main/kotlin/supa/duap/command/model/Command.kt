@@ -81,7 +81,12 @@ sealed class Command(
 
         data object MATCH_CANCEL : MatchingCommand(
             key = "매칭취소",
-            description = "매치를 취소합니다."
+            description = "매치 대기를 취소합니다."
+        )
+
+        data object GAME_CANCEL : MatchingCommand(
+            key = "게임취소",
+            description = "매치된 게임을 취소합니다."
         )
 
         data object RECORD_GAME_RESULT : MatchingCommand(

@@ -23,6 +23,10 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
         playerId : Long
     ) = request { api.getRunningGame(playerId) }
 
+    suspend fun cancelRunningGame(
+        playerId : Long
+    ) = request { api.cancelRunningGame(playerId) }
+
     suspend fun createGame(
         typeCode : Int,
         player1Id : Long,

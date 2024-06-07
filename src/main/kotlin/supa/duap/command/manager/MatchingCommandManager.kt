@@ -74,6 +74,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
         addCommand(MatchingCommand.MATCH_CANCEL)
 
+        addCommand(MatchingCommand.GAME_CANCEL)
+
         addCommand(MatchingCommand.RECORD_GAME_RESULT) {
             integer(
                 name = MatchingCommand.RECORD_GAME_RESULT.optionName1,
@@ -103,6 +105,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             MatchingCommand.RANK_GAME -> registerGamePool(interaction, GameType.RANK)
             MatchingCommand.MATCH_INFO -> showMatchInfo(interaction)
             MatchingCommand.MATCH_CANCEL -> unregisterGamePool(interaction)
+            MatchingCommand.GAME_CANCEL -> gameCancel(interaction)
             MatchingCommand.RECORD_GAME_RESULT -> registerGameResult(interaction)
             MatchingCommand.SHOW_RANKING -> showRanking(interaction)
         }
@@ -341,6 +344,34 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             .catch { e ->
                 e.printStackTrace()
                 interaction.respondEphemeral { embed { description = e.message ?: "매칭 취소에 실패했어요." } }
+            }
+            .collect()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun gameCancel(interaction : ChatInputCommandInteraction) {
+        flow {
+            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
+                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
+            }
+
+            emit(author)
+        }
+            .flatMapConcat {
+                matchMakingManager.cancelRunningGame(it.id.value.toLong())
+            }
+            .onEach { gameResult ->
+                if (gameResult == null) {
+                    throw Exception("게임 정보가 잘못되었어요.")
+                }
+
+                interaction.respondPublic {
+                    embed { description = "게임이 취소되었습니다." }
+                }
+            }
+            .catch { e ->
+                e.printStackTrace()
+                interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
             }
             .collect()
     }

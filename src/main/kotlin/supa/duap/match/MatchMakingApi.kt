@@ -37,6 +37,11 @@ interface MatchMakingApi {
         @Query("playerId") playerId : Long
     ) : APIResponse<RunningGame?>
 
+    @POST("match/cancel")
+    suspend fun cancelRunningGame(
+        @Query("playerId") playerId : Long
+    ) : APIResponse<GameResult?>
+
     @FormUrlEncoded
     @POST("match/score")
     suspend fun registerGameScore(

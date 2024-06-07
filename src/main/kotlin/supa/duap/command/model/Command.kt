@@ -59,8 +59,8 @@ sealed class Command(
 
         sealed interface MatchRegisterCommand {
             companion object {
-                const val optionName1 = "등급허용한도"
-                const val optionName2 = "대기시간"
+                const val optionName1 = "대기시간"
+                const val optionName2 = "등급허용한도"
             }
         }
 

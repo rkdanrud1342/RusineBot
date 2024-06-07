@@ -41,32 +41,32 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         addCommand(MatchingCommand.CASUAL_GAME) {
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName1,
-                description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
-            ).optional()
-
-            integer(
-                name = MatchingCommand.MatchRegisterCommand.optionName2,
-                description = "매칭 대기시간을 분단위로 설정해요.",
+                description = "매칭 대기시간을 분단위로 설정해요. 사용하지 않으려면 0을 입력해주세요.",
                 builder = {
                     this.minValue = 0
                     this.maxValue = 10
                 }
+            )
+
+            integer(
+                name = MatchingCommand.MatchRegisterCommand.optionName2,
+                description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
             ).optional()
         }
 
         addCommand(MatchingCommand.RANK_GAME) {
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName1,
-                description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
-            ).optional()
-
-            integer(
-                name = MatchingCommand.MatchRegisterCommand.optionName2,
-                description = "매칭 대기시간을 분단위로 설정해요.",
+                description = "매칭 대기시간을 분단위로 설정해요. 사용하지 않으려면 0을 입력해주세요.",
                 builder = {
                     this.minValue = 0
                     this.maxValue = 10
                 }
+            )
+
+            integer(
+                name = MatchingCommand.MatchRegisterCommand.optionName2,
+                description = "자신과 상대방의 등급 차이 허용 한도를 설정해요. 기본값은 1이에요. 설정하지 않으려면 -1을 넣어주세요."
             ).optional()
         }
 
@@ -218,10 +218,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     throw Exception("이미 ${other.name}님과 게임을 진행중이에요.")
                 }
 
-                val rankAvailableRange =
-                    interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName1]?.toInt() ?: 1
                 val awaitTimeMinutes =
-                    interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 0
+                    interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName1]?.toInt() ?: 0
+                val rankAvailableRange =
+                    interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 1
 
                 logger.debug("player : ${author?.globalName}, rankAvailableRange : $rankAvailableRange, awaitTimeMinutes : $awaitTimeMinutes")
 

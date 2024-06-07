@@ -142,6 +142,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
                     if (!canBothPlayerBeMatched(player1MatchArgsPair, e.toPair())) {
                         // cannot be matched
+                        continue
                     }
 
                     // matched. init player2 info and break loop.

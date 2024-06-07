@@ -75,7 +75,7 @@ sealed class Command(
         ), MatchRegisterCommand
 
         data object MATCH_INFO : MatchingCommand(
-            key = "매치정보",
+            key = "게임정보",
             description = "현재 매치된 게임 정보를 표시합니다."
         )
 
@@ -99,7 +99,7 @@ sealed class Command(
 
         data object SHOW_RANKING : MatchingCommand(
             key = "랭킹보기",
-            description = "랭킹 리스트 및 본인의 랭킹을 보여줘요."
+            description = "랭킹 리스트 및 본인의 랭킹을 봅니다."
         )
     }
 }

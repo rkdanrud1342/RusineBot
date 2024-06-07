@@ -166,7 +166,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 matchMakingManager.getProfile(user.id.value.toLong())
             }
             .catch { e ->
-                interaction.respondEphemeral { embed { description = e.message ?: "프로필이 등록되지 않았어요." } }
+                interaction.respondEphemeral { embed { description = e.message ?: "프로필 검색에 실패했습니다." } }
             }
             .onEach { player ->
                 if (player == null) {
@@ -389,9 +389,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 val winCounts = interaction.command.integers
 
                 val p1WinCount =
-                    winCounts[MatchingCommand.RECORD_GAME_RESULT.optionName1] ?: throw Exception("매개변수가 잘못되었습니다.")
+                    winCounts[MatchingCommand.RECORD_GAME_RESULT.optionName1] ?: throw Exception("점수가 잘못 입력되었습니다.")
                 val p2WinCount =
-                    winCounts[MatchingCommand.RECORD_GAME_RESULT.optionName2] ?: throw Exception("매개변수가 잘못되었습니다.")
+                    winCounts[MatchingCommand.RECORD_GAME_RESULT.optionName2] ?: throw Exception("점수가 잘못 입력되었습니다.")
 
                 matchMakingManager.registerGameScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
             }

@@ -54,7 +54,7 @@ sealed class Command(
             key = "프로필보기",
             description = "프로필을 봅니다."
         ) {
-            const val optionName1 = "사용자"
+            const val optionName1 = "선수"
         }
 
         sealed interface MatchRegisterCommand {
@@ -76,7 +76,7 @@ sealed class Command(
 
         data object MATCH_INFO : MatchingCommand(
             key = "게임정보",
-            description = "현재 매치된 게임 정보를 표시합니다."
+            description = "현재 매칭된 시합 정보를 표시합니다."
         )
 
         data object MATCH_CANCEL : MatchingCommand(

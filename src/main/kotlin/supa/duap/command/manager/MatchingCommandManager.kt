@@ -14,11 +14,12 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
+import io.ktor.util.logging.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
-//import org.slf4j.Logger
-//import org.slf4j.LoggerFactory
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
@@ -27,7 +28,7 @@ import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.PlayerProfile
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
-//    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
+    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
 
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
 
@@ -255,6 +256,23 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         return@addOnGameCreateListener
                     }
 
+                    interaction.channel.createMessage {
+                        embed {
+                            author {
+                                name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                            }
+
+                            description = buildString {
+                                appendLine(matchedMentList.random())
+                                appendLine()
+                                appendLine("1P : ${game.player1.name}")
+                                appendLine("2P : ${game.player2.name}")
+                                appendLine()
+                                append("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                            }
+                        }
+                    }
+
                     try {
                         val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
                         val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
@@ -262,41 +280,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.globalName} VS ${member2.globalName}").apply {
                             addUser(member1.id)
                             addUser(member2.id)
-
-                            createMessage {
-                                embed {
-                                    author {
-                                        name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
-                                    }
-
-                                    description = buildString {
-                                        appendLine(matchedMentList.random())
-                                        appendLine()
-                                        appendLine("1P : ${game.player1.name}")
-                                        appendLine("2P : ${game.player2.name}")
-                                        appendLine()
-                                        append("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                    }
-                                }
-                            }
                         }
                     } catch (e : Exception) {
-                        interaction.channel.createMessage {
-                            embed {
-                                author {
-                                    name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
-                                }
-
-                                description = buildString {
-                                    appendLine(matchedMentList.random())
-                                    appendLine()
-                                    appendLine("1P : ${game.player1.name}")
-                                    appendLine("2P : ${game.player2.name}")
-                                    appendLine()
-                                    append("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                }
-                            }
-                        }
+                        logger.error(e)
                     }
                 }
 

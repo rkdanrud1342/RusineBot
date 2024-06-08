@@ -1,16 +1,20 @@
 package supa.duap.command.manager
 
+import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.optional
 import dev.kord.core.Kord
+import dev.kord.core.behavior.channel.asChannelOf
 import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
+import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
+import io.ktor.util.logging.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
@@ -207,16 +211,12 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun registerGamePool(interaction : ChatInputCommandInteraction, gameType : GameType) {
         val author = interaction.user.takeIf { it is Member } as Member?
-        flow {
-            if (author == null) {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
 
-            emit(author)
+        if (author == null) {
+            throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
         }
-            .flatMapConcat {
-                matchMakingManager.getPlayer(it.id.value.toLong())
-            }
+
+        matchMakingManager.getPlayer(author.id.value.toLong())
             .flatMapConcat { player ->
                 if (player == null) {
                     throw Exception("선수 검색에 실패했습니다.")
@@ -258,19 +258,48 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         return@addOnGameCreateListener
                     }
 
-                    interaction.channel.createMessage {
-                        embed {
-                            author {
-                                name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
-                            }
+                    try {
+                        val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
+                        val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
 
-                            description = buildString {
-                                appendLine(matchedMentList.random())
-                                appendLine()
-                                appendLine("1P : ${game.player1.name}")
-                                appendLine("2P : ${game.player2.name}")
-                                appendLine()
-                                append("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.globalName} VS ${member2.globalName}").apply {
+                            addUser(member1.id)
+                            addUser(member2.id)
+
+                            createMessage {
+                                embed {
+                                    author {
+                                        name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                                    }
+
+                                    description = buildString {
+                                        appendLine(matchedMentList.random())
+                                        appendLine()
+                                        appendLine("1P : ${game.player1.name}")
+                                        appendLine("2P : ${game.player2.name}")
+                                        appendLine()
+                                        append("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e : Exception) {
+                        logger.error(e)
+
+                        interaction.channel.createMessage {
+                            embed {
+                                author {
+                                    name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                                }
+
+                                description = buildString {
+                                    appendLine(matchedMentList.random())
+                                    appendLine()
+                                    appendLine("1P : ${game.player1.name}")
+                                    appendLine("2P : ${game.player2.name}")
+                                    appendLine()
+                                    append("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                                }
                             }
                         }
                     }

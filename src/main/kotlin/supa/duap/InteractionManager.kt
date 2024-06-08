@@ -26,7 +26,7 @@ class InteractionManager(
         matchingCommandManager.registerCommand()
 
         kord.on<GuildChatInputCommandInteractionCreateEvent> {
-            val command = CommandManager.commandList.find { it.key == interaction.invokedCommandName}
+            val command = CommandManager.commandList.find { it.key == interaction.invokedCommandName }
 
             when (command) {
                 is Command.BasicCommand -> basicCommandManager.responseCommand(command, interaction)

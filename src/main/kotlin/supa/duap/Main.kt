@@ -24,8 +24,10 @@ suspend fun main() {
 
     val kord : Kord by inject(Kord::class.java)
     val interactionManager : InteractionManager by inject(InteractionManager::class.java)
+    val roleManager : RoleManager by inject(RoleManager::class.java)
 
     interactionManager.start()
+    roleManager.start()
 
     kord.login {
         @OptIn(PrivilegedIntent::class)

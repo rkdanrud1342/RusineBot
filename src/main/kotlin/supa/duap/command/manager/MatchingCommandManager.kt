@@ -11,6 +11,7 @@ import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
+import dev.kord.rest.builder.interaction.boolean
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
@@ -31,6 +33,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
 
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
+    private val roleManager : RoleManager by inject(RoleManager::class.java)
 
     private val matchedMentList = listOf(
         "역사상 유례없는 대결이 곧 시작됩니다!",
@@ -77,6 +80,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 name = MatchingCommand.MatchRegisterCommand.optionName2,
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정합니다. 기본값은 1입니다. 설정하지 않으려면 -1을 입력하세요."
             ).optional()
+
+            boolean(
+                name = MatchingCommand.MatchRegisterCommand.optionName3,
+                description = "등급허용한도 옵션에 해당하는 계급을 맨션합니다."
+            ).optional()
         }
 
         addCommand(MatchingCommand.RANK_GAME) {
@@ -92,6 +100,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName2,
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정합니다. 기본값은 1입니다. 설정하지 않으려면 -1을 입력하세요."
+            ).optional()
+
+            boolean(
+                name = MatchingCommand.MatchRegisterCommand.optionName3,
+                description = "등급허용한도 옵션에 해당하는 계급을 맨션합니다."
             ).optional()
         }
 
@@ -243,6 +256,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName1]?.toInt() ?: 0
                 val rankAvailableRange =
                     interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 1
+                val needToMention =
+                    interaction.command.booleans[MatchingCommand.MatchRegisterCommand.optionName3] ?: false
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
@@ -277,10 +292,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
                         val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
 
-                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.globalName} VS ${member2.globalName}").apply {
-                            addUser(member1.id)
-                            addUser(member2.id)
-                        }
+                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.globalName} VS ${member2.globalName}")
+                            .apply {
+                                addUser(member1.id)
+                                addUser(member2.id)
+                            }
                     } catch (e : Exception) {
                         logger.error(e)
                     }
@@ -296,6 +312,16 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                     embed {
                         description = "${player.name}선수가 $gameTypeName 대기열에 합류했습니다!"
+                    }
+                }
+
+                if (needToMention) {
+                    interaction.channel.createMessage {
+                        content = roleManager.getMentionRoles(author, rankAvailableRange).joinToString(separator = " ") { it.mention }
+
+                        embed {
+                            description = "이 선수를 상대할 선수는 과연 누가 될 것인가!"
+                        }
                     }
                 }
             }
@@ -450,7 +476,15 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                             appendLine()
 
-                            append("${gameResult.player1Name} (${if (gameResult.player1WinCount > gameResult.player2WinCount) { "승" } else { "패" }})")
+                            append(
+                                "${gameResult.player1Name} (${
+                                    if (gameResult.player1WinCount > gameResult.player2WinCount) {
+                                        "승"
+                                    } else {
+                                        "패"
+                                    }
+                                })"
+                            )
 
                             if (gameResult.gameType == GameType.RANK) {
                                 append(" 점수 : ${gameResult.player1EloScore} (${gameResult.player1EloScoreChange})")
@@ -458,7 +492,15 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                             appendLine()
 
-                            append("${gameResult.player2Name} (${if (gameResult.player2WinCount > gameResult.player1WinCount) { "승" } else { "패" }})")
+                            append(
+                                "${gameResult.player2Name} (${
+                                    if (gameResult.player2WinCount > gameResult.player1WinCount) {
+                                        "승"
+                                    } else {
+                                        "패"
+                                    }
+                                })"
+                            )
 
                             if (gameResult.gameType == GameType.RANK) {
                                 append(" 점수 : ${gameResult.player2EloScore} (${gameResult.player2EloScoreChange})")

@@ -61,6 +61,7 @@ sealed class Command(
             companion object {
                 const val optionName1 = "대기시간"
                 const val optionName2 = "등급허용한도"
+                const val optionName3 = "호출"
             }
         }
 

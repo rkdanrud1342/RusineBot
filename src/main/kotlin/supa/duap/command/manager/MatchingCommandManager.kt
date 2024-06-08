@@ -14,12 +14,11 @@ import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.interaction.integer
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
-import io.ktor.util.logging.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+//import org.slf4j.Logger
+//import org.slf4j.LoggerFactory
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
@@ -28,7 +27,7 @@ import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.PlayerProfile
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
-    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
+//    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
 
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
 
@@ -244,8 +243,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 val rankAvailableRange =
                     interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 1
 
-                logger.debug("player : ${author?.globalName}, rankAvailableRange : $rankAvailableRange, awaitTimeMinutes : $awaitTimeMinutes")
-
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
                 matchMakingManager.addOnGameCreateListener(key = player) { game ->
@@ -284,8 +281,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                             }
                         }
                     } catch (e : Exception) {
-                        logger.error(e)
-
                         interaction.channel.createMessage {
                             embed {
                                 author {

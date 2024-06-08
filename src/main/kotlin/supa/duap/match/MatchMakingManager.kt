@@ -3,8 +3,6 @@ package supa.duap.match
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import supa.duap.BaseCoroutine
 import supa.duap.match.model.*
 import supa.duap.match.model.GameType.*
@@ -12,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
 class MatchMakingManager(private val repo : MatchMakingRepository) {
-    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
 
     private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
@@ -111,13 +108,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
         val diff = abs(p1Grade - p2Grade)
 
-        logger.debug("diff : $diff, p1AvailableRange : $p1AvailableRange, p2AvailableRange : $p2AvailableRange")
-
-        val canBeMatched = (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
-
-        logger.debug("canBeMatched : $canBeMatched")
-
-        return canBeMatched
+        return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
     }
 
     private fun makeChannel(gameType : GameType) {

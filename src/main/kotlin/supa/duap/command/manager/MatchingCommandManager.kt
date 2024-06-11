@@ -322,7 +322,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
                         val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
 
-                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.globalName} VS ${member2.globalName}")
+                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.effectiveName} VS ${member2.effectiveName}")
                             .apply {
                                 addUser(member1.id)
                                 addUser(member2.id)
@@ -496,7 +496,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     throw Exception("게임 정보가 잘못되었어요.")
                 }
 
-                if (gameResult.gameType == GameType.RANK) {
+                /*if (gameResult.gameType == GameType.RANK) {
                     (interaction.user as Member).guild.run {
                         val player1Member = getMember(Snowflake(gameResult.player1Id))
 
@@ -525,7 +525,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                             player2Member.addRole(player2Role.id, "등급 변경")
                         }
                     }
-                }
+                }*/
 
                 interaction.respondPublic {
                     embed {

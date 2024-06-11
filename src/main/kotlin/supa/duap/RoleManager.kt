@@ -15,7 +15,9 @@ class RoleManager(
 ) {
     private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
 
-    private val fighterRoles = mutableListOf<Role>()
+    private val _fighterRoles = mutableListOf<Role>()
+    val fighterRoles : List<Role>
+        get() = _fighterRoles
 
     suspend fun start() {
         kord.on<GuildCreateEvent> {
@@ -30,28 +32,30 @@ class RoleManager(
             roleArray.forEach { role ->
                 if (role == null) return@forEach
 
-                fighterRoles.add(role)
+                _fighterRoles.add(role)
             }
 
-            logger.debug(fighterRoles.joinToString { it.name })
+            logger.debug(_fighterRoles.joinToString { it.name })
         }
     }
 
     suspend fun getMentionRoles(member : Member, rankAvailableRange : Int) : List<Role> {
         if (rankAvailableRange == -1) {
-            return fighterRoles
+            return _fighterRoles
         }
 
         return member.roles.transform { role ->
-            val roleIndex = fighterRoles.indexOf(role).takeIf { it != -1 } ?: return@transform
+            val roleIndex = _fighterRoles.indexOf(role).takeIf { it != -1 } ?: return@transform
 
             val lowIndex = (roleIndex - rankAvailableRange).takeIf { it >= 0 } ?: 0
-            val highIndex = ((roleIndex + rankAvailableRange).takeIf { it <= fighterRoles.lastIndex } ?: fighterRoles.lastIndex) + 1
+            val highIndex = ((roleIndex + rankAvailableRange).takeIf { it <= _fighterRoles.lastIndex } ?: _fighterRoles.lastIndex) + 1
 
-            emit(fighterRoles.subList(lowIndex, highIndex))
+            emit(_fighterRoles.subList(lowIndex, highIndex))
         }
             .single()
     }
+
+    fun getRoleFromGrade(grade : Grade) : Role = _fighterRoles[grade.ordinal]
 }
 
 enum class Grade(val gradeName : String) {

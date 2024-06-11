@@ -1,5 +1,6 @@
 package supa.duap.command.manager
 
+import com.kotlindiscord.kord.extensions.utils.hasRole
 import dev.kord.common.entity.Snowflake
 import dev.kord.common.entity.optional.optional
 import dev.kord.core.Kord
@@ -28,6 +29,7 @@ import supa.duap.match.model.GameType
 import supa.duap.Grade
 import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.PlayerProfile
+import kotlin.math.roundToInt
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
     private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
@@ -492,6 +494,37 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             .onEach { gameResult ->
                 if (gameResult == null) {
                     throw Exception("게임 정보가 잘못되었어요.")
+                }
+
+                if (gameResult.gameType == GameType.RANK) {
+                    (interaction.user as Member).guild.run {
+                        val player1Member = getMember(Snowflake(gameResult.player1Id))
+
+                        val player2Member = getMember(Snowflake(gameResult.player2Id))
+
+                        val player1Role = roleManager.getRoleFromGrade(Grade.getGrade(gameResult.player1EloScore.roundToInt()))
+                        val player2Role = roleManager.getRoleFromGrade(Grade.getGrade(gameResult.player2EloScore.roundToInt()))
+
+                        if (!player1Member.hasRole(player1Role)) {
+                            roleManager.fighterRoles.forEach { role ->
+                                if (player1Member.hasRole(role)) {
+                                    player1Member.removeRole(role.id, "등급 변경")
+                                }
+                            }
+
+                            player1Member.addRole(player1Role.id, "등급 변경")
+                        }
+
+                        if (!player2Member.hasRole(player2Role)) {
+                            roleManager.fighterRoles.forEach { role ->
+                                if (player2Member.hasRole(role)) {
+                                    player2Member.removeRole(role.id, "등급 변경")
+                                }
+                            }
+
+                            player2Member.addRole(player2Role.id, "등급 변경")
+                        }
+                    }
                 }
 
                 interaction.respondPublic {

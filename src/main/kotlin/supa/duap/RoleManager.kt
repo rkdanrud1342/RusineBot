@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.single
 import kotlinx.coroutines.flow.transform
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import supa.duap.match.model.Grade
 
 class RoleManager(
     private val kord : Kord
@@ -52,5 +51,56 @@ class RoleManager(
             emit(fighterRoles.subList(lowIndex, highIndex))
         }
             .single()
+    }
+}
+
+enum class Grade(val gradeName : String) {
+    BEGINNER("입문자"),
+    FIGHTER("격투가"),
+    MASTER_PROXY("사범대리"),
+    EXPERT("달인"),
+    KING_OF_FIST("패왕"),
+    EMPEROR_OF_FIST("권황"),
+    KING_LIKE("왕자"),
+    STAR_FIST("권성"),
+    IMMORTAL("이모탈 Immortal"),
+    IMMORTAL_SR("이모탈 SR Immortal"),
+    IMMORTAL_SSR("이모탈 SSR Immortal"),
+    IMMORTAL_UR("이모탈 UR Immortal"),
+    IMMORTAL_SUR("이모탈 SUR Immortal"),
+    GOD("GOD");
+
+    operator fun minus(opGrade : Grade) : Int = this.ordinal - opGrade.ordinal
+
+    companion object {
+        fun getGrade(eloScore : Int) =
+            when (eloScore) {
+                in Int.MIN_VALUE..3999 -> BEGINNER
+                in 4000..4249 -> FIGHTER
+                in 4250..4499 -> MASTER_PROXY
+                in 4500..4749 -> EXPERT
+                in 4750..4999 -> KING_OF_FIST
+                in 5000..5249 -> EMPEROR_OF_FIST
+                in 5250..5499 -> KING_LIKE
+                in 5500..5749 -> STAR_FIST
+                in 5750..5999-> IMMORTAL
+                in 6000..6249 -> IMMORTAL_SR
+                in 6250..6499 -> IMMORTAL_SSR
+                in 6500..6749 -> IMMORTAL_UR
+                in 6750..6999 -> IMMORTAL_SUR
+                else -> GOD
+            }
+
+        fun getFromRole(roles : List<Role>) : Grade {
+            roles.forEach { role ->
+                val grade = entries.find { role.name.contains(it.gradeName) }
+
+                if (grade != null) {
+                    return grade
+                }
+            }
+
+            return BEGINNER
+        }
     }
 }

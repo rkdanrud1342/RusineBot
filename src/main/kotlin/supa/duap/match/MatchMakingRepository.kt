@@ -1,7 +1,7 @@
 package supa.duap.match
 
 import supa.duap.api.request
-import supa.duap.match.model.Grade
+import supa.duap.Grade
 
 class MatchMakingRepository(private val api : MatchMakingApi) {
 

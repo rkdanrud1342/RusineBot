@@ -25,7 +25,7 @@ import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.GameType
-import supa.duap.match.model.Grade
+import supa.duap.Grade
 import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.PlayerProfile
 

@@ -341,7 +341,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
 
                     embed {
-                        description = "${player.name}선수가 $gameTypeName 대기열에 합류했습니다!"
+                        description = "${player.name} 선수가 $gameTypeName 대기열에 합류했습니다!"
                     }
                 }
 
@@ -350,7 +350,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         content = roleManager.getMentionRoles(author, rankAvailableRange).joinToString(separator = " ") { it.mention }
 
                         embed {
-                            description = "이 선수를 상대할 선수는 과연 누가 될 것인가!"
+                            description = "${player.name} 선수가 상대를 찾고있습니다! 이 선수를 상대할 선수는 과연 누가 될 것인가!"
                         }
                     }
                 }

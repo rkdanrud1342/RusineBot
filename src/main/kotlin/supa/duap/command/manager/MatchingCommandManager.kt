@@ -343,7 +343,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                if (needToMention == "Y") {
+                if (needToMention == "Y" && rankAvailableRange != -1) {
                     interaction.channel.createMessage {
                         content = roleManager.getMentionRoles(author, rankAvailableRange).joinToString(separator = " ") { it.mention }
 

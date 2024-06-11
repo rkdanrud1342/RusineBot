@@ -11,8 +11,8 @@ import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
-import dev.kord.rest.builder.interaction.boolean
 import dev.kord.rest.builder.interaction.integer
+import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.embed
 import io.ktor.util.logging.*
@@ -79,12 +79,26 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName2,
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정합니다. 기본값은 1입니다. 설정하지 않으려면 -1을 입력하세요."
-            ).optional()
+            ) {
+                this.minValue = -1
+                this.maxValue = Grade.entries.size.toLong()
+            }.optional()
 
-            boolean(
+            string(
                 name = MatchingCommand.MatchRegisterCommand.optionName3,
-                description = "등급허용한도 옵션에 해당하는 계급을 맨션합니다."
-            ).optional()
+                description = "등급허용한도 옵션에 해당하는 계급을 맨션합니다.",
+            ) {
+                choice(
+                    name = "Y",
+                    value = "Y"
+                )
+
+                choice(
+                    name = "N",
+                    value = "N"
+                )
+            }
+                .optional()
         }
 
         addCommand(MatchingCommand.RANK_GAME) {
@@ -100,12 +114,26 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             integer(
                 name = MatchingCommand.MatchRegisterCommand.optionName2,
                 description = "자신과 상대방의 등급 차이 허용 한도를 설정합니다. 기본값은 1입니다. 설정하지 않으려면 -1을 입력하세요."
-            ).optional()
+            ) {
+                this.minValue = -1
+                this.maxValue = Grade.entries.size.toLong()
+            }.optional()
 
-            boolean(
+            string(
                 name = MatchingCommand.MatchRegisterCommand.optionName3,
-                description = "등급허용한도 옵션에 해당하는 계급을 맨션합니다."
-            ).optional()
+                description = "등급허용한도 옵션에 해당하는 계급을 맨션합니다.",
+            ) {
+                choice(
+                    name = "Y",
+                    value = "Y"
+                )
+
+                choice(
+                    name = "N",
+                    value = "N"
+                )
+            }
+                .optional()
         }
 
         addCommand(MatchingCommand.MATCH_INFO)
@@ -257,7 +285,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 val rankAvailableRange =
                     interaction.command.integers[MatchingCommand.MatchRegisterCommand.optionName2]?.toInt() ?: 1
                 val needToMention =
-                    interaction.command.booleans[MatchingCommand.MatchRegisterCommand.optionName3] ?: false
+                    interaction.command.strings[MatchingCommand.MatchRegisterCommand.optionName3] ?: "N"
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
@@ -315,7 +343,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                if (needToMention) {
+                if (needToMention == "Y") {
                     interaction.channel.createMessage {
                         content = roleManager.getMentionRoles(author, rankAvailableRange).joinToString(separator = " ") { it.mention }
 

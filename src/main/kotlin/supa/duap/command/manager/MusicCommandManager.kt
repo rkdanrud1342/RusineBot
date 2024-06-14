@@ -11,7 +11,6 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason
 import dev.kord.common.annotation.KordVoice
 import dev.kord.common.entity.Snowflake
-import dev.kord.common.entity.optional.optional
 import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.connect
 import dev.kord.core.behavior.channel.createMessage
@@ -20,8 +19,6 @@ import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
-import dev.kord.rest.builder.interaction.integer
-import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.message.embed
 import dev.kord.voice.AudioFrame
 import dev.kord.voice.VoiceConnection
@@ -38,28 +35,30 @@ class MusicCommandManager(kord : Kord) : CommandManager<MusicCommand>(kord) {
     private val lavaPlayerManager = DefaultAudioPlayerManager().also { AudioSourceManagers.registerRemoteSources(it) }
 
     override suspend fun registerCommand() {
-        addCommand(MusicCommand.PLAY) {
-            string(
-                name = "키워드",
-                description = "YouTube 검색 키워드."
-            )
-        }
+        addCommand(MusicCommand.PLAY)
+//        {
+//            string(
+//                name = "키워드",
+//                description = "YouTube 검색 키워드."
+//            )
+//        }
 
         addCommand(MusicCommand.SKIP)
 
         addCommand(MusicCommand.LIST)
 
-        addCommand(MusicCommand.REMOVE) {
-            string(
-                name = "키워드",
-                description = "재생목록 검색 키워드"
-            ).optional()
-
-            integer(
-                name = "순번",
-                description = "삭제할 음원이 위치한 재생목록 순번"
-            ).optional()
-        }
+        addCommand(MusicCommand.REMOVE)
+//        {
+//            string(
+//                name = "키워드",
+//                description = "재생목록 검색 키워드"
+//            ).optional()
+//
+//            integer(
+//                name = "순번",
+//                description = "삭제할 음원이 위치한 재생목록 순번"
+//            ).optional()
+//        }
 
         addCommand(MusicCommand.DROP)
     }

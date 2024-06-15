@@ -173,8 +173,8 @@ sealed class Command(
             key = "랭크매치",
             description = "랭크매치 대기열에 등록합니다.",
             builder = {
-                name(Locale.ENGLISH_UNITED_STATES, "rank_match")
-                description(Locale.ENGLISH_UNITED_STATES, "Register for Rank match queue.")
+                name(Locale.ENGLISH_UNITED_STATES, "ranking_match")
+                description(Locale.ENGLISH_UNITED_STATES, "Register for Ranking match queue.")
 
                 name(Locale.JAPANESE, "ランクマッチ")
                 description(Locale.JAPANESE, "ランクマッチのキューに登録します。")

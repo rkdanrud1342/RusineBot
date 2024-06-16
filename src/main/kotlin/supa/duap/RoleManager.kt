@@ -1,14 +1,12 @@
 package supa.duap
 
 import dev.kord.core.Kord
-import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.event.guild.GuildCreateEvent
 import dev.kord.core.on
-import kotlinx.coroutines.flow.single
-import kotlinx.coroutines.flow.transform
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import supa.duap.match.model.Player
 
 class RoleManager(
     private val kord : Kord
@@ -39,23 +37,18 @@ class RoleManager(
         }
     }
 
-    suspend fun getMentionRoles(member : Member, rankAvailableRange : Int) : List<Role> {
+    fun getMentionRoles(player : Player, rankAvailableRange : Int) : List<Role> {
         if (rankAvailableRange == -1) {
             return _fighterRoles
         }
 
-        return member.roles.transform { role ->
-            val roleIndex = _fighterRoles.indexOf(role).takeIf { it != -1 } ?: return@transform
+        val index = player.grade.ordinal
 
-            val lowIndex = (roleIndex - rankAvailableRange).takeIf { it >= 0 } ?: 0
-            val highIndex = ((roleIndex + rankAvailableRange).takeIf { it <= _fighterRoles.lastIndex } ?: _fighterRoles.lastIndex) + 1
+        val lowIndex = (index - rankAvailableRange).takeIf { it != -1 } ?: 0
+        val highIndex = ((index + rankAvailableRange).takeIf { it <= _fighterRoles.lastIndex } ?: _fighterRoles.lastIndex) + 1
 
-            emit(_fighterRoles.subList(lowIndex, highIndex))
-        }
-            .single()
+        return _fighterRoles.subList(lowIndex, highIndex)
     }
-
-    fun getRoleFromGrade(grade : Grade) : Role = _fighterRoles[grade.ordinal]
 }
 
 enum class Grade(val gradeName : String) {

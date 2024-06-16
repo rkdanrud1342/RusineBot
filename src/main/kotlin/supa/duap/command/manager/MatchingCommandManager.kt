@@ -1,5 +1,6 @@
 package supa.duap.command.manager
 
+import com.kotlindiscord.kord.extensions.utils.hasRole
 import dev.kord.common.Locale
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
@@ -26,6 +27,7 @@ import supa.duap.match.model.GameType
 import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.Player
 import supa.duap.match.model.PlayerProfile
+import kotlin.math.roundToInt
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
     private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
@@ -431,7 +433,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     throw Exception("게임 정보가 잘못되었어요.")
                 }
 
-                /*if (gameResult.gameType == GameType.RANK) {
+                if (gameResult.gameType == GameType.RANK) {
                     (interaction.user as Member).guild.run {
                         val player1Member = getMember(Snowflake(gameResult.player1Id))
 
@@ -460,7 +462,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                             player2Member.addRole(player2Role.id, "등급 변경")
                         }
                     }
-                }*/
+                }
 
                 interaction.respondPublic {
                     embed {

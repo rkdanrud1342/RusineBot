@@ -13,12 +13,9 @@ import dev.kord.core.entity.Role
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
 import dev.kord.rest.builder.message.embed
-import io.ktor.util.logging.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import supa.duap.Grade
 import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
@@ -30,8 +27,6 @@ import supa.duap.match.model.PlayerProfile
 import kotlin.math.roundToInt
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
-    private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
-
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
     private val roleManager : RoleManager by inject(RoleManager::class.java)
 
@@ -224,7 +219,17 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         return@addOnGameCreateListener
                     }
 
+                    val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
+                    val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
+
+                    (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
+                        .apply {
+                            addUser(member1.id)
+                            addUser(member2.id)
+                        }
+
                     interaction.channel.createMessage {
+                        content = "${member1.mention} ${member2.mention}"
                         embed {
                             author {
                                 name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
@@ -238,22 +243,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                                 appendLine("2P : ${game.player2.name}")
                                 appendLine()
                                 appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                append("Please create a room and proceed with the Game!")
+                                append("Please create a room and play Game!")
                             }
                         }
-                    }
-
-                    try {
-                        val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
-                        val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
-
-                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "${member1.effectiveName} VS ${member2.effectiveName}")
-                            .apply {
-                                addUser(member1.id)
-                                addUser(member2.id)
-                            }
-                    } catch (e : Exception) {
-                        logger.error(e)
                     }
                 }
 

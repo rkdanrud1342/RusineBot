@@ -203,7 +203,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 val rankAvailableRange =
                     interaction.command.integers[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION2_NAME]?.toInt() ?: 1
                 val needToMention =
-                    interaction.command.strings[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION3_NAME] ?: "N"
+                    interaction.command.strings[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION3_NAME] ?: "Y"
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 

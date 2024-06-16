@@ -49,6 +49,8 @@ class RoleManager(
 
         return _fighterRoles.subList(lowIndex, highIndex)
     }
+
+    fun getRoleFromGrade(grade : Grade) : Role = _fighterRoles[grade.ordinal]
 }
 
 enum class Grade(val gradeName : String) {

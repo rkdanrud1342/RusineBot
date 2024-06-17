@@ -158,7 +158,7 @@ sealed class Command(
                             name(Locale.JAPANESE, "呼び出すかどうか")
                             description(Locale.JAPANESE, "'最大等級差' オプション内のランク ロールについて説明します。 '最大等級差' が -1 の場合、効果はありません。")
 
-                            name(Locale.CHINESE_TAIWAN, "通話狀態")
+                            name(Locale.CHINESE_TAIWAN, "是否通知")
                             description(Locale.CHINESE_TAIWAN, "調用與'最大等級差'選項對應的等級。")
 
                             choice(name = "Y", value = "Y")

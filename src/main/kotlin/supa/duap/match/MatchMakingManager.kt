@@ -104,7 +104,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
             id = -1,
             player1 = player1.toDummyProfile(),
             player2 = player2.toDummyProfile(),
-            matchTypeCode = CASUAL.typeCode
+            matchType = CASUAL
         )
 
         RANK -> repo.createMatch(RANK.typeCode, player1.id, player2.id)

@@ -481,7 +481,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 interaction.respondPublic {
                     embed {
                         author {
-                            name = "대전 결과가 성공적으로 저장되었습니다!"
+                            name = buildString {
+                                appendLine("대전 결과가 저장되었습니다!")
+                                append("Match result has been saved!")
+                            }
                         }
                         description = buildString {
                             appendLine("${matchResult.player1Name} ${matchResult.player1WinCount} : ${matchResult.player2WinCount} ${matchResult.player2Name}")

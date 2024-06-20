@@ -1,8 +1,10 @@
 package supa.duap.match.model
 
+import com.google.gson.annotations.SerializedName
 import java.time.LocalDateTime
 
 data class MatchResult(
+    @SerializedName("gameType")
     val matchType : MatchType,
 
     val player1Id : Long,

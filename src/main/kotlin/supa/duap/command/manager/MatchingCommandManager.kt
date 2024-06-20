@@ -8,6 +8,7 @@ import dev.kord.core.behavior.channel.asChannelOf
 import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
+import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
@@ -51,6 +52,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         "Get Ready For The Next Battle!",
         "이 드라마가 어떻게 전개될지 한 번 확인해보시죠!"
     )
+
+    private val deferredMessageMap = mutableMapOf<Player, DeferredEphemeralMessageInteractionResponseBehavior>()
 
     override suspend fun registerCommand() {
         addCommand(MatchingCommand.CREATE_PROFILE)
@@ -208,11 +211,13 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
-                val defer = interaction.deferEphemeralResponse()
+                deferredMessageMap[player] = interaction.deferEphemeralResponse()
 
                 matchMakingManager.addOnMatchCreateListener(key = player) { match, needToMakeThread ->
+                    val deferredMessageBehavior = deferredMessageMap.remove(player) ?: return@addOnMatchCreateListener
+
                     if (match == null) {
-                        defer.respond {
+                        deferredMessageBehavior.respond {
                             embed {
                                 description = buildString {
                                     appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
@@ -224,7 +229,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         return@addOnMatchCreateListener
                     }
 
-                    defer.respond {
+                    deferredMessageBehavior.respond {
                         embed {
                             author {
                                 name = "Here Comes A New Challenger!"
@@ -369,6 +374,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         description = "매칭 대기를 취소했습니다."
                     }
                 }
+
+                deferredMessageMap.remove(player)?.respond { embed { description = "매칭 대기를 취소했습니다." } }?.delete()
             }
             .catch { e ->
                 e.printStackTrace()

@@ -364,9 +364,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     return@onEach
                 }
 
-                interaction.respondPublic {
+                interaction.respondEphemeral {
                     embed {
-                        description = "${player.name} 선수가 매칭 대기를 취소했습니다."
+                        description = "매칭 대기를 취소했습니다."
                     }
                 }
             }

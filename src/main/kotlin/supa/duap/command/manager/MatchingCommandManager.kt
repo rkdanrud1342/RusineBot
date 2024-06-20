@@ -200,7 +200,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 }
 
                 val awaitTimeMinutes =
-                    interaction.command.integers[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION1_NAME]?.toInt() ?: 0
+                    interaction.command.integers[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION1_NAME]?.toInt() ?: 10
                 val rankAvailableRange =
                     interaction.command.integers[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION2_NAME]?.toInt() ?: 1
                 val needToMention =

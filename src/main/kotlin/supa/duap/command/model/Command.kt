@@ -114,19 +114,19 @@ sealed class Command(
                 val builder : GlobalChatInputCreateBuilder.() -> Unit = {
                     integer(
                         name = MATCH_REGISTER_COMMAND_OPTION1_NAME,
-                        description = "매칭 대기시간을 분단위로 설정합니다. 설정하지 않으려면 0을 입력하세요.",
+                        description = "매칭 대기시간을 분단위로 설정합니다. 기본 : 10분, 최소 1분, 최대 60분.",
                         builder = {
                             name(Locale.ENGLISH_UNITED_STATES, "waiting_time")
-                            description(Locale.ENGLISH_UNITED_STATES, "Set the matching wait time in minutes. Enter 0 to unset.")
+                            description(Locale.ENGLISH_UNITED_STATES, "Set the matching wait time in minutes. Default : 10min, Min : 1min, Max : 60min.")
 
                             name(Locale.JAPANESE, "待ち時間")
-                            description(Locale.JAPANESE, "マッチング待ち時間を分単位で設定します。設定しない場合は0を入力してください。")
+                            description(Locale.JAPANESE, "マッチング待ち時間を分単位で設定します。基本 : 10分、最小 : 1分、最大 : 60分。")
 
                             name(Locale.CHINESE_TAIWAN, "等待的時間")
-                            description(Locale.CHINESE_TAIWAN, "設定匹配的等待時間（以分鐘為單位）。如果不想設置，請輸入0。")
+                            description(Locale.CHINESE_TAIWAN, "設定匹配的等待時間（以分鐘為單位）。基本 : 10分鐘，最少 : 1分鐘，最多 : 60分鐘。")
 
-                            minValue = 0
-                            maxValue = 10
+                            minValue = 1
+                            maxValue = 60
                         }
                     )
 

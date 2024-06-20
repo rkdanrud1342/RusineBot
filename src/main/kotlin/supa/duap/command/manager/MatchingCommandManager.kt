@@ -363,7 +363,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 if (!matchMakingManager.dequeue(player)) {
                     interaction.respondEphemeral {
                         embed {
-                            description = "현재 등록된 대기열이 없습니다."
+                            description = buildString {
+                                appendLine("현재 등록된 대기열이 없습니다.")
+                                append("You are not registered at queue.")
+                            }
                         }
                     }
                     return@onEach
@@ -371,7 +374,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 interaction.respondEphemeral {
                     embed {
-                        description = "매칭 대기를 취소했습니다."
+                        description = buildString {
+                            appendLine("매칭 대기를 취소했습니다.")
+                            append("You have been unregistered at queue.")
+                        }
                     }
                 }
 
@@ -379,7 +385,14 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             }
             .catch { e ->
                 e.printStackTrace()
-                interaction.respondEphemeral { embed { description = e.message ?: "매칭 취소에 실패했습니다." } }
+                interaction.respondEphemeral {
+                    embed {
+                        description = e.message ?: buildString {
+                            appendLine("매칭 취소에 실패했습니다.")
+                            append("Failed to unregister.")
+                        }
+                    }
+                }
             }
             .collect()
     }

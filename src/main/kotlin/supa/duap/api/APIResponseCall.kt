@@ -6,7 +6,10 @@ import okio.Timeout
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import supa.duap.api.serialization.LocalDateTimeDeserializer
+import supa.duap.api.serialization.LocalDateTimeSerializer
 import java.lang.reflect.Type
+import java.time.LocalDateTime
 
 /**
  * API 요청을 파싱하는 클래스
@@ -20,7 +23,10 @@ class APIResponseCall<T>(
     private val successType: Type
 ) : Call<APIResponse<T>> {
 
-    private val gson = GsonBuilder().create()
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeSerializer())
+        .registerTypeAdapter(LocalDateTime::class.java, LocalDateTimeDeserializer())
+        .create()
 
     /**
      * 백그라운드에서 API 응답을 처리하는 메소드

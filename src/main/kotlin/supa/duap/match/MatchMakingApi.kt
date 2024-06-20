@@ -26,29 +26,29 @@ interface MatchMakingApi {
 
     @FormUrlEncoded
     @POST("match/create")
-    suspend fun createGame(
+    suspend fun createMatch(
         @Field("typeCode") typeCode : Int,
         @Field("player1Id") player1Id : Long,
         @Field("player2Id") player2Id : Long
-    ) : APIResponse<RunningGame?>
+    ) : APIResponse<RunningMatch?>
 
     @GET("match/running")
-    suspend fun getRunningGame(
+    suspend fun getRunningMatch(
         @Query("playerId") playerId : Long
-    ) : APIResponse<RunningGame?>
+    ) : APIResponse<RunningMatch?>
 
     @POST("match/cancel")
-    suspend fun cancelRunningGame(
+    suspend fun cancelRunningMatch(
         @Query("playerId") playerId : Long
-    ) : APIResponse<GameResult?>
+    ) : APIResponse<MatchResult?>
 
     @FormUrlEncoded
     @POST("match/score")
-    suspend fun registerGameScore(
+    suspend fun registerMatchScore(
         @Field("playerId") playerId : Long,
         @Field("player1WinCount") player1WinCount : Int,
         @Field("player2WinCount") player2WinCount : Int
-    ) : APIResponse<GameResult?>
+    ) : APIResponse<MatchResult?>
 
     @GET("player/ranking")
     suspend fun getPlayerRanking(

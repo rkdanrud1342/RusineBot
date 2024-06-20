@@ -8,6 +8,7 @@ import dev.kord.core.behavior.channel.asChannelOf
 import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
+import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.entity.channel.TextChannel
@@ -20,7 +21,7 @@ import supa.duap.Grade
 import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
-import supa.duap.match.model.GameType
+import supa.duap.match.model.MatchType
 import supa.duap.match.model.MatchArgs
 import supa.duap.match.model.Player
 import supa.duap.match.model.PlayerProfile
@@ -75,12 +76,12 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         when (command) {
             MatchingCommand.CREATE_PROFILE -> registerProfile(interaction)
             MatchingCommand.SHOW_PROFILE -> showProfile(interaction)
-            MatchingCommand.CASUAL_GAME -> registerGamePool(interaction, GameType.CASUAL)
-            MatchingCommand.RANK_GAME -> registerGamePool(interaction, GameType.RANK)
+            MatchingCommand.CASUAL_GAME -> registerMatchQueue(interaction, MatchType.CASUAL)
+            MatchingCommand.RANK_GAME -> registerMatchQueue(interaction, MatchType.RANK)
             MatchingCommand.MATCH_INFO -> showMatchInfo(interaction)
-            MatchingCommand.MATCH_CANCEL -> unregisterGamePool(interaction)
-            MatchingCommand.GAME_CANCEL -> gameCancel(interaction)
-            MatchingCommand.RECORD_GAME_RESULT -> registerGameResult(interaction)
+            MatchingCommand.MATCH_CANCEL -> unregisterMatchPool(interaction)
+            MatchingCommand.GAME_CANCEL -> matchCancel(interaction)
+            MatchingCommand.RECORD_GAME_RESULT -> registerMatchScore(interaction)
             MatchingCommand.SHOW_RANKING -> showRanking(interaction)
         }
     }
@@ -165,7 +166,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun registerGamePool(interaction : ChatInputCommandInteraction, gameType : GameType) {
+    private suspend fun registerMatchQueue(interaction : ChatInputCommandInteraction, matchType : MatchType) {
         val author = interaction.user.takeIf { it is Member } as Member?
 
         if (author == null) {
@@ -182,17 +183,20 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     throw Exception("이미 대기열에 등록되어 있는 상태입니다.\nYou have already registered for the queue.")
                 }
 
-                matchMakingManager.getRunningGame(player.id).map { player to it }
+                when (matchType) {
+                    MatchType.CASUAL -> flow { emit(player to null) }
+                    MatchType.RANK -> matchMakingManager.getRunningMatch(player.id).map { player to it }
+                }
             }
-            .onEach { (player, runningGame) ->
-                if (runningGame != null) {
-                    val other = if (runningGame.player1.id != player.id) {
-                        runningGame.player1
+            .onEach { (player, runningMatch) ->
+                if (runningMatch != null) {
+                    val other = if (runningMatch.player1.id != player.id) {
+                        runningMatch.player1
                     } else {
-                        runningGame.player2
+                        runningMatch.player2
                     }
 
-                    throw Exception("이미 ${other.name} 선수와 대전을 진행중입니다.\nYou are playing game with ${other.name}.")
+                    throw Exception("이미 ${other.name} 선수와 대전을 진행중입니다.\nYou are playing match with ${other.name}.")
                 }
 
                 val awaitTimeMinutes =
@@ -204,80 +208,85 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
-                matchMakingManager.addOnGameCreateListener(key = player) { game ->
-                    if (game == null) {
-                        interaction.channel.createMessage {
-                            content = player.name
+                val defer = interaction.deferEphemeralResponse()
 
+                matchMakingManager.addOnMatchCreateListener(key = player) { match, needToMakeThread ->
+                    if (match == null) {
+                        defer.respond {
                             embed {
                                 description = buildString {
-                                    appendLine("대전 상대를 찾지 못해 매칭대기열 등록을 취소합니다.")
+                                    appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
                                     append("Unregister match queues because no other players were found.")
                                 }
                             }
                         }
-                        return@addOnGameCreateListener
+
+                        return@addOnMatchCreateListener
                     }
 
-                    val member1 = author.getGuild().getMember(Snowflake(game.player1.id))
-                    val member2 = author.getGuild().getMember(Snowflake(game.player2.id))
+                    defer.respond {
+                        embed {
+                            author {
+                                name = "Here Comes A New Challenger!"
+                            }
+                        }
+                    }
+
+                    if (!needToMakeThread) {
+                        return@addOnMatchCreateListener
+                    }
+
+                    val member1 = author.getGuild().getMember(Snowflake(match.player1.id))
+                    val member2 = author.getGuild().getMember(Snowflake(match.player2.id))
 
                     (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
                         .apply {
                             addUser(member1.id)
                             addUser(member2.id)
-                        }
 
-                    interaction.channel.createMessage {
-                        content = "${member1.mention} ${member2.mention}"
-                        embed {
-                            author {
-                                name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                            createMessage {
+                                content = "${member1.mention} VS ${member2.mention}"
+                                embed {
+                                    author {
+                                        name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                                    }
 
+                                    description = buildString {
+                                        appendLine(matchedMentList.random())
+                                        appendLine()
+                                        appendLine("1P : ${match.player1.name}")
+                                        appendLine("2P : ${match.player2.name}")
+                                        appendLine()
+                                        appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                                        append("Please create a room and play Match!")
+                                    }
+                                }
                             }
-
-                            description = buildString {
-                                appendLine(matchedMentList.random())
-                                appendLine()
-                                appendLine("1P : ${game.player1.name}")
-                                appendLine("2P : ${game.player2.name}")
-                                appendLine()
-                                appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                append("Please create a room and play Game!")
-                            }
                         }
-                    }
                 }
 
-                matchMakingManager.enqueue(player, matchArgs, gameType)
-
-                interaction.respondPublic {
-                    val gameTypeName = when (gameType) {
-                        GameType.CASUAL -> "캐주얼 매치" to "casual match"
-                        GameType.RANK -> "랭크 매치" to "rank match"
-                    }
-
-                    embed {
-                        description = buildString {
-                            appendLine("${player.name} 선수가 ${gameTypeName.first} 대기열에 합류했습니다!")
-                            append("Player ${player.name} has joined ${gameTypeName.second} queue!")
-                        }
-                    }
+                val matchTypeName = when (matchType) {
+                    MatchType.CASUAL -> "캐주얼 매치" to "casual match"
+                    MatchType.RANK -> "랭크 매치" to "rank match"
                 }
 
                 if (needToMention == "Y" && rankAvailableRange != -1) {
-                    interaction.channel.createMessage {
-                        content = roleManager.getMentionRoles(player, rankAvailableRange)
-                            .joinToString(separator = " ") { it.mention }
+                    matchMakingManager.addOnNotMatchedAtOnceListener(key = player) {
+                        interaction.channel.createMessage {
+                            content = roleManager.getMentionRoles(player, rankAvailableRange)
+                                .joinToString(separator = " ") { it.mention }
 
-                        embed {
-                            description = buildString {
-                                appendLine("${player.name} 선수가 상대를 찾고있습니다! 이 선수를 상대할 선수는 과연 누가 될 것인가!")
-                                append("Player ${player.name} is looking for an opponent! Who will face this player!")
+                            embed {
+                                description = buildString {
+                                    appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고있습니다!")
+                                    append("Someone is looking for an opponent in a ${matchTypeName.second}!")
+                                }
                             }
                         }
                     }
                 }
+
+                matchMakingManager.enqueue(player, matchArgs, MatchType.RANK)
             }
             .catch { e ->
                 e.printStackTrace()
@@ -299,22 +308,22 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         }
             .filterNotNull()
             .flatMapConcat { author ->
-                matchMakingManager.getRunningGame(author.id.value.toLong())
+                matchMakingManager.getRunningMatch(author.id.value.toLong())
             }
-            .onEach { runningGame ->
-                if (runningGame == null) {
+            .onEach { runningMatch ->
+                if (runningMatch == null) {
                     throw Exception("현재 진행중인 대전이 없습니다.")
                 }
 
                 interaction.respondEphemeral {
                     embed {
                         author {
-                            name = "${runningGame.gameType.typeName}매치 대전이 진행중입니다."
+                            name = "${runningMatch.matchType.typeName}매치 대전이 진행중입니다."
                         }
 
                         description = buildString {
-                            appendLine("1P : ${runningGame.player1.name}")
-                            append("2P : ${runningGame.player2.name}")
+                            appendLine("1P : ${runningMatch.player1.name}")
+                            append("2P : ${runningMatch.player2.name}")
                         }
                     }
                 }
@@ -327,7 +336,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun unregisterGamePool(interaction : ChatInputCommandInteraction) {
+    private suspend fun unregisterMatchPool(interaction : ChatInputCommandInteraction) {
         val author = interaction.user.takeIf { it is Member } as Member?
 
         flow {
@@ -369,7 +378,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun gameCancel(interaction : ChatInputCommandInteraction) {
+    private suspend fun matchCancel(interaction : ChatInputCommandInteraction) {
         flow {
             val author = interaction.user.takeIf { it is Member } as Member? ?: run {
                 throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
@@ -378,11 +387,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             emit(author)
         }
             .flatMapConcat {
-                matchMakingManager.cancelRunningGame(it.id.value.toLong())
+                matchMakingManager.cancelRunningMatch(it.id.value.toLong())
             }
-            .onEach { gameResult ->
-                if (gameResult == null) {
-                    throw Exception("게임 정보가 잘못되었습니다.")
+            .onEach { matchResult ->
+                if (matchResult == null) {
+                    throw Exception("진행중인 게임이 없습니다.")
                 }
 
                 interaction.respondPublic {
@@ -397,7 +406,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun registerGameResult(interaction : ChatInputCommandInteraction) {
+    private suspend fun registerMatchScore(interaction : ChatInputCommandInteraction) {
         flow {
             val author = interaction.user.takeIf { it is Member } as Member? ?: run {
                 throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
@@ -408,31 +417,44 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             .flatMapConcat {
                 val winCounts = interaction.command.integers
 
-                val errorMessage = when (interaction.locale) {
+                val errorMessageWrongInput = when (interaction.locale) {
                     Locale.ENGLISH_UNITED_STATES -> "Wrong score has been entered."
                     Locale.JAPANESE -> "スコアが間違って入力されました。"
                     Locale.CHINESE_TAIWAN -> "分數輸入錯誤。"
                     else -> "점수가 잘못 입력되었습니다."
                 }
 
-                val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION1_NAME] ?: throw Exception(errorMessage)
-                val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION2_NAME] ?: throw Exception(errorMessage)
+                val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION1_NAME] ?: throw Exception(errorMessageWrongInput)
+                val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION2_NAME] ?: throw Exception(errorMessageWrongInput)
 
-                matchMakingManager.registerGameScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
+                val isFt5 = (p1WinCount == 5L && p1WinCount > p2WinCount) || (p2WinCount == 5L && p2WinCount > p1WinCount)
+
+                if (!isFt5) {
+                    val errorMessageNoFt5 = when (interaction.locale) {
+                        Locale.ENGLISH_UNITED_STATES -> "Ranked matchs should be played with ft5."
+                        Locale.JAPANESE -> "ランクマッチは5先勝で行う必要があります。"
+                        Locale.CHINESE_TAIWAN -> "排名賽必須以5先勝進行。"
+                        else -> "랭크게임은 5선승으로 진행되어야 합니다."
+                    }
+
+                    throw Exception(errorMessageNoFt5)
+                }
+
+                matchMakingManager.registerMatchScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
             }
-            .onEach { gameResult ->
-                if (gameResult == null) {
+            .onEach { matchResult ->
+                if (matchResult == null) {
                     throw Exception("게임 정보가 잘못되었어요.")
                 }
 
-                if (gameResult.gameType == GameType.RANK) {
+                if (matchResult.matchType == MatchType.RANK) {
                     (interaction.user as Member).guild.run {
-                        val player1Member = getMember(Snowflake(gameResult.player1Id))
+                        val player1Member = getMember(Snowflake(matchResult.player1Id))
 
-                        val player2Member = getMember(Snowflake(gameResult.player2Id))
+                        val player2Member = getMember(Snowflake(matchResult.player2Id))
 
-                        val player1Role = roleManager.getRoleFromGrade(Grade.getGrade(gameResult.player1EloScore.roundToInt()))
-                        val player2Role = roleManager.getRoleFromGrade(Grade.getGrade(gameResult.player2EloScore.roundToInt()))
+                        val player1Role = roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player1EloScore.roundToInt()))
+                        val player2Role = roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player2EloScore.roundToInt()))
 
                         if (!player1Member.hasRole(player1Role)) {
                             roleManager.fighterRoles.forEach { role ->
@@ -462,38 +484,28 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                             name = "대전 결과가 성공적으로 저장되었습니다!"
                         }
                         description = buildString {
-                            appendLine("${gameResult.player1Name} ${gameResult.player1WinCount} : ${gameResult.player2WinCount} ${gameResult.player2Name}")
+                            appendLine("${matchResult.player1Name} ${matchResult.player1WinCount} : ${matchResult.player2WinCount} ${matchResult.player2Name}")
 
                             appendLine()
 
-                            append(
-                                "${gameResult.player1Name} (${
-                                    if (gameResult.player1WinCount > gameResult.player2WinCount) {
-                                        "Win"
-                                    } else {
-                                        "Lose"
-                                    }
-                                })"
-                            )
+                            val winLose = if (matchResult.player1WinCount > matchResult.player2WinCount) {
+                                "Win" to "Lose"
+                            } else {
+                                "Lose" to "Win"
+                            }
 
-                            if (gameResult.gameType == GameType.RANK) {
-                                append(" Score : ${gameResult.player1EloScore} (${gameResult.player1EloScoreChange})")
+                            append("${matchResult.player1Name} (${winLose.first})")
+
+                            if (matchResult.matchType == MatchType.RANK) {
+                                append(" Score : ${matchResult.player1EloScore} (${matchResult.player1EloScoreChange})")
                             }
 
                             appendLine()
 
-                            append(
-                                "${gameResult.player2Name} (${
-                                    if (gameResult.player2WinCount > gameResult.player1WinCount) {
-                                        "Win"
-                                    } else {
-                                        "Lose"
-                                    }
-                                })"
-                            )
+                            append("${matchResult.player2Name} (${winLose.second})")
 
-                            if (gameResult.gameType == GameType.RANK) {
-                                append(" Score : ${gameResult.player2EloScore} (${gameResult.player2EloScoreChange})")
+                            if (matchResult.matchType == MatchType.RANK) {
+                                append(" Score : ${matchResult.player2EloScore} (${matchResult.player2EloScoreChange})")
                             }
                         }
                     }
@@ -548,9 +560,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     private fun PlayerProfile.format(locale : Locale?) : String {
         val gradeLabel : String
         val scoreLabel : String
-        val rankGameLabel : String
-        val casualGameLabel : String
-        val gamePlayCountLabel : String
+        val rankMatchLabel : String
+        val casualMatchLabel : String
+        val matchPlayCountLabel : String
         val winCountLabel : String
         val loseCountLabel : String
 
@@ -558,9 +570,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             Locale.ENGLISH_UNITED_STATES -> {
                 gradeLabel = "Grade"
                 scoreLabel = "Score"
-                rankGameLabel = "Rank Match"
-                casualGameLabel = "Casual Match"
-                gamePlayCountLabel = "Played"
+                rankMatchLabel = "Rank Match"
+                casualMatchLabel = "Casual Match"
+                matchPlayCountLabel = "Played"
                 winCountLabel = "Win"
                 loseCountLabel = "Lose"
             }
@@ -568,9 +580,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             Locale.JAPANESE -> {
                 gradeLabel = "等級"
                 scoreLabel = "点数"
-                rankGameLabel = "ランクマッチ"
-                casualGameLabel = "カジュアルマッチ"
-                gamePlayCountLabel = "ゲームの回数"
+                rankMatchLabel = "ランクマッチ"
+                casualMatchLabel = "カジュアルマッチ"
+                matchPlayCountLabel = "ゲームの回数"
                 winCountLabel = "勝利"
                 loseCountLabel = "敗北"
             }
@@ -578,9 +590,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             Locale.CHINESE_TAIWAN -> {
                 gradeLabel = "檔次"
                 scoreLabel = "分數"
-                rankGameLabel = "排名賽"
-                casualGameLabel = "休閒比賽"
-                gamePlayCountLabel = "遊戲次數"
+                rankMatchLabel = "排名賽"
+                casualMatchLabel = "休閒比賽"
+                matchPlayCountLabel = "遊戲次數"
                 winCountLabel = "勝利"
                 loseCountLabel = "敗北"
             }
@@ -588,9 +600,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             else -> {
                 gradeLabel = "등급"
                 scoreLabel = "점수"
-                rankGameLabel = "랭크 매치"
-                casualGameLabel = "캐주얼 매치"
-                gamePlayCountLabel = "게임 횟수"
+                rankMatchLabel = "랭크 매치"
+                casualMatchLabel = "캐주얼 매치"
+                matchPlayCountLabel = "게임 횟수"
                 winCountLabel = "승리"
                 loseCountLabel = "패배"
             }
@@ -600,13 +612,13 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 "$gradeLabel : ${grade.gradeName}\n" +
                 "$scoreLabel : $eloScore\n" +
                 "\n" +
-                "$rankGameLabel\n" +
-                "$gamePlayCountLabel : ${rankWinCount + rankLoseCount}\n" +
+                "$rankMatchLabel\n" +
+                "$matchPlayCountLabel : ${rankWinCount + rankLoseCount}\n" +
                 "$winCountLabel : $rankWinCount\n" +
                 "$loseCountLabel : $rankLoseCount\n" +
                 "\n" +
-                "$casualGameLabel\n" +
-                "$gamePlayCountLabel : ${casualWinCount + casualLoseCount}\n" +
+                "$casualMatchLabel\n" +
+                "$matchPlayCountLabel : ${casualWinCount + casualLoseCount}\n" +
                 "$winCountLabel : $casualWinCount\n" +
                 "$loseCountLabel : $casualLoseCount\n"
     }

@@ -1,7 +1,9 @@
 package supa.duap.match.model
 
-data class GameResult(
-    val gameType : GameType,
+import java.time.LocalDateTime
+
+data class MatchResult(
+    val matchType : MatchType,
 
     val player1Id : Long,
     val player1Name : String,
@@ -14,4 +16,6 @@ data class GameResult(
     val player2WinCount : Int,
     val player2EloScore : Double,
     val player2EloScoreChange : Double,
+
+    val regDateTime : LocalDateTime
 )

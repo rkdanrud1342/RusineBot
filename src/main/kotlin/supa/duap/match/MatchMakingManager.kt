@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.*
 import supa.duap.BaseCoroutine
 import supa.duap.Grade
 import supa.duap.match.model.*
-import supa.duap.match.model.GameType.*
+import supa.duap.match.model.MatchType.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
@@ -14,88 +14,104 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
-    private val casualGamePool : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
-    private val rankGamePool : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
+    private val casualMatchQueue : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
+    private val rankedMatchQueue : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
 
-    private val casualGameChannel : Channel<Pair<Player, MatchArgs>> = Channel()
-    private val rankGameChannel : Channel<Pair<Player, MatchArgs>> = Channel()
+    private val casualMatchChannel : Channel<Pair<Player, MatchArgs>> = Channel()
+    private val rankedMatchChannel : Channel<Pair<Player, MatchArgs>> = Channel()
 
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
-    private val matchResultListeners = mutableMapOf<Player, (suspend (RunningGame?) -> Unit)?>()
+    private val matchResultListeners = mutableMapOf<Player, suspend (RunningMatch?, Boolean) -> Unit>()
+    private val notMatchedAtOnceListeners = mutableMapOf<Player, suspend () -> Unit>()
 
     init {
         makeChannel(CASUAL)
         makeChannel(RANK)
     }
 
-    private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, gameType : GameType) {
+    private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, matchType : MatchType) {
         awaitingJobs[p.first] = matchMakingScope.launch {
+            notMatchedAtOnceListeners.remove(p.first)?.invoke()
+
             delay(30000L)
 
             p.second.phase++
 
             if (p.second.isAwaitOver()) {
                 val player1 = p.first
-                when (gameType) {
-                    RANK -> rankGamePool
-                    CASUAL -> casualGamePool
+                when (matchType) {
+                    RANK -> rankedMatchQueue
+                    CASUAL -> casualMatchQueue
                 }.remove(player1)
-                matchResultListeners.remove(player1)?.invoke(null)
+                matchResultListeners.remove(player1)?.invoke(null, true)
                 return@launch
             }
 
-            when (gameType) {
-                RANK -> rankGameChannel
-                CASUAL -> casualGameChannel
+            when (matchType) {
+                RANK -> rankedMatchChannel
+                CASUAL -> casualMatchChannel
             }.send(p)
         }
     }
 
-    fun addOnGameCreateListener(key : Player, listener : (suspend (RunningGame?) -> Unit)?) {
+    fun addOnMatchCreateListener(key : Player, listener : suspend (RunningMatch?, Boolean) -> Unit) {
         matchResultListeners[key] = listener
     }
 
-    fun enqueue(player : Player, matchArgs : MatchArgs, gameType : GameType) {
+    fun addOnNotMatchedAtOnceListener(key : Player, listener : suspend () -> Unit) {
+        notMatchedAtOnceListeners[key] = listener
+    }
+
+    fun enqueue(player : Player, matchArgs : MatchArgs, matchType : MatchType) {
         matchMakingScope.launch {
-            when (gameType) {
+            when (matchType) {
                 CASUAL -> {
-                    casualGamePool[player] = matchArgs
-                    casualGameChannel.send(player to matchArgs)
+                    casualMatchQueue[player] = matchArgs
+                    casualMatchChannel.send(player to matchArgs)
                 }
 
                 RANK -> {
-                    rankGamePool[player] = matchArgs
-                    rankGameChannel.send(player to matchArgs)
+                    rankedMatchQueue[player] = matchArgs
+                    rankedMatchChannel.send(player to matchArgs)
                 }
             }
         }
     }
 
     fun dequeue(player : Player) : Boolean =
-        casualGamePool.remove(player) != null ||
-                rankGamePool.remove(player) != null ||
+        casualMatchQueue.remove(player) != null ||
+                rankedMatchQueue.remove(player) != null ||
                 awaitingJobs[player]?.also { it.cancel() } != null
 
     fun isRegistered(player : Player) : Boolean =
-        casualGamePool[player] != null || rankGamePool[player] != null
+        casualMatchQueue[player] != null || rankedMatchQueue[player] != null
 
     suspend fun createProfile(id : Long, nickname : String?, grade : Grade) = repo.createPlayer(id, nickname, grade)
     suspend fun getProfile(id : Long) = repo.getProfile(id)
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)
-    suspend fun getRunningGame(playerId : Long) = repo.getRunningGame(playerId)
-    suspend fun cancelRunningGame(playerId : Long) = repo.cancelRunningGame(playerId)
-    suspend fun registerGameScore(playerId : Long, p1Score : Int, p2Score : Int) = repo.registerGameScore(playerId, p1Score, p2Score)
+    suspend fun getRunningMatch(playerId : Long) = repo.getRunningMatch(playerId)
+    suspend fun cancelRunningMatch(playerId : Long) = repo.cancelRunningMatch(playerId)
+    suspend fun registerMatchScore(playerId : Long, p1Score : Int, p2Score : Int) = repo.registerMatchScore(playerId, p1Score, p2Score)
     suspend fun getPlayerRanking(playerId : Long) = repo.getPlayerRanking(playerId)
 
-    private suspend fun makeGame(
-        gameType : GameType,
+    private suspend fun makeMatch(
+        matchType : MatchType,
         player1 : Player,
         player2 : Player
-    ) = repo.createGame(gameType.typeCode, player1.id, player2.id)
-        .take(1)
-        .catch { emit(null) }
-        .single()
+    ) = when (matchType) {
+        CASUAL -> RunningMatch(
+            id = -1,
+            player1 = player1.toDummyProfile(),
+            player2 = player2.toDummyProfile(),
+            matchTypeCode = CASUAL.typeCode
+        )
+
+        RANK -> repo.createMatch(RANK.typeCode, player1.id, player2.id)
+            .take(1)
+            .catch { emit(null) }
+            .single()
+    }
 
     private fun canBothPlayerBeMatched(
         p1 : Pair<Player, MatchArgs>,
@@ -112,10 +128,10 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
     }
 
-    private fun makeChannel(gameType : GameType) {
-        val (channel, pool) = when (gameType) {
-            CASUAL -> casualGameChannel to casualGamePool
-            RANK -> rankGameChannel to rankGamePool
+    private fun makeChannel(matchType : MatchType) {
+        val (channel, pool) = when (matchType) {
+            CASUAL -> casualMatchChannel to casualMatchQueue
+            RANK -> rankedMatchChannel to rankedMatchQueue
         }
 
         matchMakingScope.launch {
@@ -153,15 +169,30 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
                     pool.remove(player1)
                     pool.remove(player2)
 
-                    val game = makeGame(gameType, player1, player2) ?: return@let null
+                    val match = makeMatch(matchType, player1, player2) ?: return@let null
 
-                    matchResultListeners.remove(player1)?.invoke(game)
-                    matchResultListeners.remove(player2)
+                    launch {
+                        matchResultListeners.remove(player1)?.invoke(match, true)
+                    }
+
+                    launch {
+                        matchResultListeners.remove(player2)?.invoke(match, false)
+                    }
                 } ?: run {
                     // when no matched
-                    onNoMatched(player1MatchArgsPair, gameType)
+                    onNoMatched(player1MatchArgsPair, matchType)
                 }
             }
         }
     }
+
+    private fun Player.toDummyProfile() = PlayerProfile(
+        id = id,
+        name = name,
+        casualWinCount = 0,
+        casualLoseCount = 0,
+        rankWinCount = 0,
+        rankLoseCount = 0,
+        eloScore = 0
+    )
 }

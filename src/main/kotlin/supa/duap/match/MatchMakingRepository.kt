@@ -19,25 +19,25 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
         id : Long
     ) = request { api.getProfile(id) }
 
-    suspend fun getRunningGame(
+    suspend fun getRunningMatch(
         playerId : Long
-    ) = request { api.getRunningGame(playerId) }
+    ) = request { api.getRunningMatch(playerId) }
 
-    suspend fun cancelRunningGame(
+    suspend fun cancelRunningMatch(
         playerId : Long
-    ) = request { api.cancelRunningGame(playerId) }
+    ) = request { api.cancelRunningMatch(playerId) }
 
-    suspend fun createGame(
+    suspend fun createMatch(
         typeCode : Int,
         player1Id : Long,
         player2Id : Long,
-    ) = request { api.createGame(typeCode, player1Id, player2Id) }
+    ) = request { api.createMatch(typeCode, player1Id, player2Id) }
 
-    suspend fun registerGameScore(
+    suspend fun registerMatchScore(
         playerId : Long,
         p1Score : Int,
         p2Score : Int
-    ) = request { api.registerGameScore(playerId, p1Score, p2Score) }
+    ) = request { api.registerMatchScore(playerId, p1Score, p2Score) }
 
     suspend fun getPlayerRanking(
         playerId: Long

@@ -171,13 +171,8 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
                     val match = makeMatch(matchType, player1, player2) ?: return@let null
 
-                    launch {
-                        matchResultListeners.remove(player1)?.invoke(match, true)
-                    }
-
-                    launch {
-                        matchResultListeners.remove(player2)?.invoke(match, false)
-                    }
+                    matchResultListeners.remove(player1)?.invoke(match, true)
+                    matchResultListeners.remove(player2)?.invoke(match, false)
                 } ?: run {
                     // when no matched
                     onNoMatched(player1MatchArgsPair, matchType)

@@ -29,10 +29,7 @@ import supa.duap.Grade
 import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
-import supa.duap.match.model.MatchArgs
-import supa.duap.match.model.MatchType
-import supa.duap.match.model.Player
-import supa.duap.match.model.PlayerProfile
+import supa.duap.match.model.*
 import java.util.*
 import kotlin.math.roundToInt
 
@@ -523,24 +520,119 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 lateinit var job : Job
 
+                suspend fun registerScore(runningMatch : RunningMatch, authorId : Long, isDelayed : Boolean) {
+                    scoreCheckMap.remove(runningMatch.player1.id)
+                    scoreCheckMap.remove(runningMatch.player2.id)
+
+                    matchMakingManager.registerMatchScore(
+                        playerId = authorId,
+                        p1Score = p1WinCount!!.toInt(),
+                        p2Score = p2WinCount!!.toInt()
+                    )
+                        .onEach { matchResult ->
+                            if (matchResult == null) {
+                                throw Exception("게임 정보가 잘못되었어요.")
+                            }
+
+                            if (matchResult.matchType == MatchType.RANK) {
+                                (interaction.user as Member).guild.run {
+                                    val player1Member = getMember(Snowflake(matchResult.player1Id))
+
+                                    val player2Member = getMember(Snowflake(matchResult.player2Id))
+
+                                    val player1Role =
+                                        roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player1EloScore.roundToInt()))
+                                    val player2Role =
+                                        roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player2EloScore.roundToInt()))
+
+                                    if (!player1Member.hasRole(player1Role)) {
+                                        roleManager.fighterRoles.forEach { role ->
+                                            if (player1Member.hasRole(role)) {
+                                                player1Member.removeRole(role.id, "등급 변경")
+                                            }
+                                        }
+
+                                        player1Member.addRole(player1Role.id, "등급 변경")
+                                    }
+
+                                    if (!player2Member.hasRole(player2Role)) {
+                                        roleManager.fighterRoles.forEach { role ->
+                                            if (player2Member.hasRole(role)) {
+                                                player2Member.removeRole(role.id, "등급 변경")
+                                            }
+                                        }
+
+                                        player2Member.addRole(player2Role.id, "등급 변경")
+                                    }
+                                }
+                            }
+
+                            interaction.getOriginalInteractionResponse().edit {
+                                actionRow {
+                                    components.apply {
+                                        add(okButtonBuilder.apply { this.disabled = true })
+                                        add(cancelButtonBuilder.apply { this.disabled = true })
+                                    }
+                                }
+
+                                if (isDelayed) {
+                                    embed {
+                                        author {
+                                            name = "3분동안 응답이 없어 점수 등록이 완료되었습니다."
+                                        }
+                                    }
+                                }
+                            }
+
+                            interaction.channel.createMessage {
+                                embed {
+                                    author {
+                                        name = buildString {
+                                            appendLine("대전 결과가 저장되었습니다!")
+                                            append("Match result has been saved!")
+                                        }
+                                    }
+                                    description = buildString {
+                                        appendLine("${matchResult.player1Name} ${matchResult.player1WinCount} : ${matchResult.player2WinCount} ${matchResult.player2Name}")
+
+                                        appendLine()
+
+                                        val winLose =
+                                            if (matchResult.player1WinCount > matchResult.player2WinCount) {
+                                                "Win" to "Lose"
+                                            } else {
+                                                "Lose" to "Win"
+                                            }
+
+                                        append("${matchResult.player1Name} (${winLose.first})")
+
+                                        if (matchResult.matchType == MatchType.RANK) {
+                                            append(" Score : ${matchResult.player1EloScore.roundToInt()} (${matchResult.player1EloScoreChange.roundToInt()})")
+                                        }
+
+                                        appendLine()
+
+                                        append("${matchResult.player2Name} (${winLose.second})")
+
+                                        if (matchResult.matchType == MatchType.RANK) {
+                                            append(" Score : ${matchResult.player2EloScore.roundToInt()} (${matchResult.player2EloScoreChange.roundToInt()})")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .collect()
+
+                    if (!job.isCancelled) {
+                        job.cancel()
+                    }
+                }
+
                 val awaitingJob = coroutineScope.launch {
                     delay(1000 * 60 * 3) // 3 minutes
                     job.cancel()
 
-                    interaction.getOriginalInteractionResponse().edit {
-                        actionRow {
-                            components.apply {
-                                add(okButtonBuilder.apply { this.disabled = true })
-                                add(cancelButtonBuilder.apply { this.disabled = true })
-                            }
-                        }
-
-                        embed {
-                            author {
-                                name = "3분동안 응답이 없어 점수 등록이 완료되었습니다."
-                            }
-                        }
-                    }
+                    registerScore(runningMatch, interaction.user.id.value.toLong(), true)
                 }
 
                 val onButtonClickListener : suspend (ButtonInteractionCreateEvent) -> Unit =
@@ -599,101 +691,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                                 awaitingJob.cancel()
 
-                                scoreCheckMap.remove(runningMatch.player1.id)
-                                scoreCheckMap.remove(runningMatch.player2.id)
-
-                                matchMakingManager.registerMatchScore(
-                                    playerId = authorId,
-                                    p1Score = p1WinCount!!.toInt(),
-                                    p2Score = p2WinCount!!.toInt()
-                                )
-                                    .onEach { matchResult ->
-                                        if (matchResult == null) {
-                                            throw Exception("게임 정보가 잘못되었어요.")
-                                        }
-
-                                        if (matchResult.matchType == MatchType.RANK) {
-                                            (interaction.user as Member).guild.run {
-                                                val player1Member = getMember(Snowflake(matchResult.player1Id))
-
-                                                val player2Member = getMember(Snowflake(matchResult.player2Id))
-
-                                                val player1Role =
-                                                    roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player1EloScore.roundToInt()))
-                                                val player2Role =
-                                                    roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player2EloScore.roundToInt()))
-
-                                                if (!player1Member.hasRole(player1Role)) {
-                                                    roleManager.fighterRoles.forEach { role ->
-                                                        if (player1Member.hasRole(role)) {
-                                                            player1Member.removeRole(role.id, "등급 변경")
-                                                        }
-                                                    }
-
-                                                    player1Member.addRole(player1Role.id, "등급 변경")
-                                                }
-
-                                                if (!player2Member.hasRole(player2Role)) {
-                                                    roleManager.fighterRoles.forEach { role ->
-                                                        if (player2Member.hasRole(role)) {
-                                                            player2Member.removeRole(role.id, "등급 변경")
-                                                        }
-                                                    }
-
-                                                    player2Member.addRole(player2Role.id, "등급 변경")
-                                                }
-                                            }
-                                        }
-
-                                        event.interaction.updatePublicMessage {
-                                            actionRow {
-                                                components.apply {
-                                                    add(okButtonBuilder.apply { this.disabled = true })
-                                                    add(cancelButtonBuilder.apply { this.disabled = true })
-                                                }
-                                            }
-                                        }
-
-                                        event.interaction.channel.createMessage {
-                                            embed {
-                                                author {
-                                                    name = buildString {
-                                                        appendLine("대전 결과가 저장되었습니다!")
-                                                        append("Match result has been saved!")
-                                                    }
-                                                }
-                                                description = buildString {
-                                                    appendLine("${matchResult.player1Name} ${matchResult.player1WinCount} : ${matchResult.player2WinCount} ${matchResult.player2Name}")
-
-                                                    appendLine()
-
-                                                    val winLose =
-                                                        if (matchResult.player1WinCount > matchResult.player2WinCount) {
-                                                            "Win" to "Lose"
-                                                        } else {
-                                                            "Lose" to "Win"
-                                                        }
-
-                                                    append("${matchResult.player1Name} (${winLose.first})")
-
-                                                    if (matchResult.matchType == MatchType.RANK) {
-                                                        append(" Score : ${matchResult.player1EloScore.roundToInt()} (${matchResult.player1EloScoreChange.roundToInt()})")
-                                                    }
-
-                                                    appendLine()
-
-                                                    append("${matchResult.player2Name} (${winLose.second})")
-
-                                                    if (matchResult.matchType == MatchType.RANK) {
-                                                        append(" Score : ${matchResult.player2EloScore.roundToInt()} (${matchResult.player2EloScoreChange.roundToInt()})")
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .collect()
-
-                                job.cancel()
+                                registerScore(runningMatch, interaction.user.id.value.toLong(), false)
                             }
                         }
                     }
@@ -776,6 +774,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
             }
             .collect()
+    }
+
+    private suspend fun setEloScore(interaction : ChatInputCommandInteraction) {
+
     }
 
     private fun PlayerProfile.format(locale : Locale?) : String {

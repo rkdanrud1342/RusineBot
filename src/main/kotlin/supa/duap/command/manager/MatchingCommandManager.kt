@@ -2,33 +2,43 @@ package supa.duap.command.manager
 
 import com.kotlindiscord.kord.extensions.utils.hasRole
 import dev.kord.common.Locale
+import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.channel.asChannelOf
 import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
 import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
+import dev.kord.core.event.interaction.ButtonInteractionCreateEvent
+import dev.kord.rest.builder.component.ButtonBuilder
+import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
+import supa.duap.BaseCoroutine
 import supa.duap.Grade
 import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
 import supa.duap.match.MatchMakingManager
-import supa.duap.match.model.MatchType
 import supa.duap.match.model.MatchArgs
+import supa.duap.match.model.MatchType
 import supa.duap.match.model.Player
 import supa.duap.match.model.PlayerProfile
+import java.util.*
 import kotlin.math.roundToInt
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
+    private val coroutineScope = CoroutineScope(BaseCoroutine.default)
+
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
     private val roleManager : RoleManager by inject(RoleManager::class.java)
 
@@ -54,6 +64,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     )
 
     private val deferredMessageMap = mutableMapOf<Player, DeferredEphemeralMessageInteractionResponseBehavior>()
+
+    private val scoreCheckMap : MutableMap<Long, Boolean> = mutableMapOf()
 
     override suspend fun registerCommand() {
         addCommand(MatchingCommand.CREATE_PROFILE)
@@ -303,15 +315,12 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun showMatchInfo(interaction : ChatInputCommandInteraction) {
         flow {
-            val author = interaction.user.takeIf { it is Member } as Member?
-
-            if (author == null) {
+            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
                 throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
             }
 
             emit(author)
         }
-            .filterNotNull()
             .flatMapConcat { author ->
                 matchMakingManager.getRunningMatch(author.id.value.toLong())
             }
@@ -427,6 +436,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun registerMatchScore(interaction : ChatInputCommandInteraction) {
+        val winCounts = interaction.command.integers
+        val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION1_NAME]
+        val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION2_NAME]
+
         flow {
             val author = interaction.user.takeIf { it is Member } as Member? ?: run {
                 throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
@@ -434,108 +447,293 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
             emit(author)
         }
-            .flatMapConcat {
-                val winCounts = interaction.command.integers
-
-                val errorMessageWrongInput = when (interaction.locale) {
-                    Locale.ENGLISH_UNITED_STATES -> "Wrong score has been entered."
-                    Locale.JAPANESE -> "スコアが間違って入力されました。"
-                    Locale.CHINESE_TAIWAN -> "分數輸入錯誤。"
-                    else -> "점수가 잘못 입력되었습니다."
+            .flatMapConcat { author ->
+                if (p1WinCount == null || p2WinCount == null) {
+                    throw Exception(
+                        when (interaction.locale) {
+                            Locale.ENGLISH_UNITED_STATES -> "Wrong score has been entered."
+                            Locale.JAPANESE -> "スコアが間違って入力されました。"
+                            Locale.CHINESE_TAIWAN -> "分數輸入錯誤。"
+                            else -> "점수가 잘못 입력되었습니다."
+                        }
+                    )
                 }
 
-                val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION1_NAME] ?: throw Exception(errorMessageWrongInput)
-                val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION2_NAME] ?: throw Exception(errorMessageWrongInput)
-
-                val isFt5 = (p1WinCount == 5L && p1WinCount > p2WinCount) || (p2WinCount == 5L && p2WinCount > p1WinCount)
+                val isFt5 =
+                    (p1WinCount == 5L && p1WinCount > p2WinCount) || (p2WinCount == 5L && p2WinCount > p1WinCount)
 
                 if (!isFt5) {
-                    val errorMessageNoFt5 = when (interaction.locale) {
-                        Locale.ENGLISH_UNITED_STATES -> "Ranked matchs should be played with ft5."
-                        Locale.JAPANESE -> "ランクマッチは5先勝で行う必要があります。"
-                        Locale.CHINESE_TAIWAN -> "排名賽必須以5先勝進行。"
-                        else -> "랭크게임은 5선승으로 진행되어야 합니다."
-                    }
-
-                    throw Exception(errorMessageNoFt5)
+                    throw Exception(
+                        when (interaction.locale) {
+                            Locale.ENGLISH_UNITED_STATES -> "Ranked match should be played with ft5."
+                            Locale.JAPANESE -> "ランクマッチは5先勝で行う必要があります。"
+                            Locale.CHINESE_TAIWAN -> "排名賽必須以5先勝進行。"
+                            else -> "랭크게임은 5선승으로 진행되어야 합니다."
+                        }
+                    )
                 }
 
-                matchMakingManager.registerMatchScore(it.id.value.toLong(), p1WinCount.toInt(), p2WinCount.toInt())
+                if (scoreCheckMap[author.id.value.toLong()] != null) {
+                    throw Exception(
+                        when (interaction.locale) {
+                            Locale.ENGLISH_UNITED_STATES -> "The score registration is already in progress."
+                            Locale.JAPANESE -> "すでにスコア登録が進行中です。"
+                            Locale.CHINESE_TAIWAN -> "分數登記已經在進行中。"
+                            else -> "이미 점수 등록이 진행중입니다."
+                        }
+                    )
+                }
+                matchMakingManager.getRunningMatch(author.id.value.toLong())
             }
-            .onEach { matchResult ->
-                if (matchResult == null) {
-                    throw Exception("게임 정보가 잘못되었어요.")
+            .onEach { runningMatch ->
+                if (runningMatch == null) {
+                    throw Exception("현재 진행중인 대전이 없습니다.")
                 }
 
-                if (matchResult.matchType == MatchType.RANK) {
-                    (interaction.user as Member).guild.run {
-                        val player1Member = getMember(Snowflake(matchResult.player1Id))
+                if (scoreCheckMap[runningMatch.player1.id] != null || scoreCheckMap[runningMatch.player2.id] != null) {
+                    throw Exception(
+                        when (interaction.locale) {
+                            Locale.ENGLISH_UNITED_STATES -> "The score registration is already in progress."
+                            Locale.JAPANESE -> "すでにスコア登録が進行中です。"
+                            Locale.CHINESE_TAIWAN -> "分數登記已經在進行中。"
+                            else -> "이미 점수 등록이 진행중입니다."
+                        }
+                    )
+                }
 
-                        val player2Member = getMember(Snowflake(matchResult.player2Id))
+                scoreCheckMap[runningMatch.player1.id] = false
+                scoreCheckMap[runningMatch.player2.id] = false
 
-                        val player1Role = roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player1EloScore.roundToInt()))
-                        val player2Role = roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player2EloScore.roundToInt()))
+                val okButtonId = UUID.randomUUID().toString()
+                val cancelButtonId = UUID.randomUUID().toString()
 
-                        if (!player1Member.hasRole(player1Role)) {
-                            roleManager.fighterRoles.forEach { role ->
-                                if (player1Member.hasRole(role)) {
-                                    player1Member.removeRole(role.id, "등급 변경")
-                                }
+                val okButtonBuilder = ButtonBuilder.InteractionButtonBuilder(
+                    style = ButtonStyle.Primary,
+                    customId = okButtonId
+                ).apply {
+                    label = "확인(Confirm)"
+                }
+
+                val cancelButtonBuilder = ButtonBuilder.InteractionButtonBuilder(
+                    style = ButtonStyle.Primary,
+                    customId = cancelButtonId
+                ).apply {
+                    label = "취소(Cancel)"
+                }
+
+                lateinit var job : Job
+
+                val awaitingJob = coroutineScope.launch {
+                    delay(1000 * 60 * 3) // 3 minutes
+                    job.cancel()
+
+                    interaction.getOriginalInteractionResponse().edit {
+                        actionRow {
+                            components.apply {
+                                add(okButtonBuilder.apply { this.disabled = true })
+                                add(cancelButtonBuilder.apply { this.disabled = true })
                             }
-
-                            player1Member.addRole(player1Role.id, "등급 변경")
                         }
 
-                        if (!player2Member.hasRole(player2Role)) {
-                            roleManager.fighterRoles.forEach { role ->
-                                if (player2Member.hasRole(role)) {
-                                    player2Member.removeRole(role.id, "등급 변경")
-                                }
+                        embed {
+                            author {
+                                name = "3분동안 응답이 없어 점수 등록이 완료되었습니다."
                             }
-
-                            player2Member.addRole(player2Role.id, "등급 변경")
                         }
                     }
                 }
+
+                val onButtonClickListener : suspend (ButtonInteractionCreateEvent) -> Unit =
+                    onButtonClickListener@{ event ->
+                        val authorId = event.interaction.user.id.value.toLong()
+
+                        if (authorId !in scoreCheckMap.keys) {
+                            event.interaction.updatePublicMessage { }
+                        }
+
+                        when (event.interaction.component.customId) {
+                            cancelButtonId -> {
+                                awaitingJob.cancel()
+
+                                event.interaction.updatePublicMessage {
+                                    actionRow {
+                                        components.apply {
+                                            add(okButtonBuilder.apply { this.disabled = true })
+                                            add(cancelButtonBuilder.apply { this.disabled = true })
+                                        }
+                                    }
+                                }
+
+                                event.interaction.channel.createMessage {
+                                    embed {
+                                        author {
+                                            name = "점수 등록이 취소되었습니다."
+                                        }
+                                    }
+                                }
+
+                                job.cancel()
+                            }
+
+                            okButtonId -> {
+                                if (scoreCheckMap[authorId] == true) {
+                                    event.interaction.updatePublicMessage { }
+                                    return@onButtonClickListener
+                                }
+
+                                scoreCheckMap[authorId] = true
+
+                                event.interaction.channel.createMessage {
+                                    embed {
+                                        description = buildString {
+                                            appendLine("${event.interaction.user.mention}님이 점수를 확인하셨습니다.")
+                                            append("${event.interaction.user.mention} confirmed the score.")
+                                        }
+                                    }
+                                }
+
+                                if (!scoreCheckMap.filterKeys { it == runningMatch.player1.id || it == runningMatch.player2.id }.values.reduce { acc, boolean -> acc && boolean }) {
+                                    event.interaction.updatePublicMessage { }
+                                    return@onButtonClickListener
+                                }
+
+                                awaitingJob.cancel()
+
+                                scoreCheckMap.remove(runningMatch.player1.id)
+                                scoreCheckMap.remove(runningMatch.player2.id)
+
+                                matchMakingManager.registerMatchScore(
+                                    playerId = authorId,
+                                    p1Score = p1WinCount!!.toInt(),
+                                    p2Score = p2WinCount!!.toInt()
+                                )
+                                    .onEach { matchResult ->
+                                        if (matchResult == null) {
+                                            throw Exception("게임 정보가 잘못되었어요.")
+                                        }
+
+                                        if (matchResult.matchType == MatchType.RANK) {
+                                            (interaction.user as Member).guild.run {
+                                                val player1Member = getMember(Snowflake(matchResult.player1Id))
+
+                                                val player2Member = getMember(Snowflake(matchResult.player2Id))
+
+                                                val player1Role =
+                                                    roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player1EloScore.roundToInt()))
+                                                val player2Role =
+                                                    roleManager.getRoleFromGrade(Grade.getGrade(matchResult.player2EloScore.roundToInt()))
+
+                                                if (!player1Member.hasRole(player1Role)) {
+                                                    roleManager.fighterRoles.forEach { role ->
+                                                        if (player1Member.hasRole(role)) {
+                                                            player1Member.removeRole(role.id, "등급 변경")
+                                                        }
+                                                    }
+
+                                                    player1Member.addRole(player1Role.id, "등급 변경")
+                                                }
+
+                                                if (!player2Member.hasRole(player2Role)) {
+                                                    roleManager.fighterRoles.forEach { role ->
+                                                        if (player2Member.hasRole(role)) {
+                                                            player2Member.removeRole(role.id, "등급 변경")
+                                                        }
+                                                    }
+
+                                                    player2Member.addRole(player2Role.id, "등급 변경")
+                                                }
+                                            }
+                                        }
+
+                                        event.interaction.updatePublicMessage {
+                                            actionRow {
+                                                components.apply {
+                                                    add(okButtonBuilder.apply { this.disabled = true })
+                                                    add(cancelButtonBuilder.apply { this.disabled = true })
+                                                }
+                                            }
+                                        }
+
+                                        event.interaction.channel.createMessage {
+                                            embed {
+                                                author {
+                                                    name = buildString {
+                                                        appendLine("대전 결과가 저장되었습니다!")
+                                                        append("Match result has been saved!")
+                                                    }
+                                                }
+                                                description = buildString {
+                                                    appendLine("${matchResult.player1Name} ${matchResult.player1WinCount} : ${matchResult.player2WinCount} ${matchResult.player2Name}")
+
+                                                    appendLine()
+
+                                                    val winLose =
+                                                        if (matchResult.player1WinCount > matchResult.player2WinCount) {
+                                                            "Win" to "Lose"
+                                                        } else {
+                                                            "Lose" to "Win"
+                                                        }
+
+                                                    append("${matchResult.player1Name} (${winLose.first})")
+
+                                                    if (matchResult.matchType == MatchType.RANK) {
+                                                        append(" Score : ${matchResult.player1EloScore.roundToInt()} (${matchResult.player1EloScoreChange.roundToInt()})")
+                                                    }
+
+                                                    appendLine()
+
+                                                    append("${matchResult.player2Name} (${winLose.second})")
+
+                                                    if (matchResult.matchType == MatchType.RANK) {
+                                                        append(" Score : ${matchResult.player2EloScore.roundToInt()} (${matchResult.player2EloScoreChange.roundToInt()})")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    .collect()
+
+                                job.cancel()
+                            }
+                        }
+                    }
+
+                job = kord.events
+                    .filterIsInstance(ButtonInteractionCreateEvent::class)
+                    .filter { it.interaction.component.customId in listOf(okButtonId, cancelButtonId) }
+                    .onEach(onButtonClickListener)
+                    .launchIn(coroutineScope)
 
                 interaction.respondPublic {
                     embed {
                         author {
                             name = buildString {
-                                appendLine("대전 결과가 저장되었습니다!")
-                                append("Match result has been saved!")
+                                appendLine("점수를 확인해주세요!")
+                                append("Please, Check the score!")
                             }
                         }
-                        description = buildString {
-                            appendLine("${matchResult.player1Name} ${matchResult.player1WinCount} : ${matchResult.player2WinCount} ${matchResult.player2Name}")
 
+                        this.description = buildString {
+                            appendLine("${runningMatch.player1.name} $p1WinCount : $p2WinCount ${runningMatch.player2.name}")
                             appendLine()
+                            appendLine("점수가 확정된 이후에는 변경할 수 없습니다! 신중히 검토해주세요!")
+                            appendLine("3분동안 두 선수의 확인이 없는 경우 자동으로 등록됩니다!")
+                            appendLine("You cannot change the score after it has been confirmed! Please check it carefully!")
+                            appendLine("If there is no both players' confirmation, the score will be registered automatically!")
+                        }
+                    }
 
-                            val winLose = if (matchResult.player1WinCount > matchResult.player2WinCount) {
-                                "Win" to "Lose"
-                            } else {
-                                "Lose" to "Win"
-                            }
-
-                            append("${matchResult.player1Name} (${winLose.first})")
-
-                            if (matchResult.matchType == MatchType.RANK) {
-                                append(" Score : ${matchResult.player1EloScore} (${matchResult.player1EloScoreChange})")
-                            }
-
-                            appendLine()
-
-                            append("${matchResult.player2Name} (${winLose.second})")
-
-                            if (matchResult.matchType == MatchType.RANK) {
-                                append(" Score : ${matchResult.player2EloScore} (${matchResult.player2EloScoreChange})")
-                            }
+                    actionRow {
+                        components.apply {
+                            add(okButtonBuilder)
+                            add(cancelButtonBuilder)
                         }
                     }
                 }
             }
             .catch { e ->
-                interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
+                e.printStackTrace()
+                interaction.respondEphemeral { embed { description = e.message ?: "점수 등록 요청에 실패했습니다." } }
             }
             .collect()
     }

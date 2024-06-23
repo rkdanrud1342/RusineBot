@@ -685,7 +685,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                                     }
                                 }
 
-                                if (!scoreCheckMap.filterKeys { it == runningMatch.player1.id || it == runningMatch.player2.id }.values.reduce { acc, boolean -> acc && boolean }) {
+                                val p1Confirmed = scoreCheckMap[runningMatch.player1.id] ?: false
+                                val p2Confirmed = scoreCheckMap[runningMatch.player2.id] ?: false
+
+                                if (!p1Confirmed || !p2Confirmed) {
                                     event.interaction.updatePublicMessage { }
                                     return@onButtonClickListener
                                 }

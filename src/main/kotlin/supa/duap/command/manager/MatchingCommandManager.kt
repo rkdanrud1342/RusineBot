@@ -639,8 +639,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     onButtonClickListener@{ event ->
                         val authorId = event.interaction.user.id.value.toLong()
 
-                        if (authorId !in scoreCheckMap.keys) {
+                        if (authorId != runningMatch.player1.id && authorId != runningMatch.player2.id) {
                             event.interaction.updatePublicMessage { }
+                            return@onButtonClickListener
                         }
 
                         when (event.interaction.component.customId) {
@@ -774,10 +775,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
             }
             .collect()
-    }
-
-    private suspend fun setEloScore(interaction : ChatInputCommandInteraction) {
-
     }
 
     private fun PlayerProfile.format(locale : Locale?) : String {

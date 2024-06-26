@@ -1,8 +1,10 @@
 package supa.duap.match
 
+import io.ktor.util.logging.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import org.slf4j.LoggerFactory
 import supa.duap.BaseCoroutine
 import supa.duap.Grade
 import supa.duap.match.model.*
@@ -11,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
 class MatchMakingManager(private val repo : MatchMakingRepository) {
+    private val logger = LoggerFactory.getLogger(MatchMakingManager::class.java)
 
     private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
@@ -94,6 +97,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     suspend fun cancelRunningMatch(playerId : Long) = repo.cancelRunningMatch(playerId)
     suspend fun registerMatchScore(playerId : Long, p1Score : Int, p2Score : Int) = repo.registerMatchScore(playerId, p1Score, p2Score)
     suspend fun getPlayerRanking(playerId : Long) = repo.getPlayerRanking(playerId)
+    suspend fun setPlayerGrade(playerId: Long, grade : Int) = repo.setPlayerGrade(playerId, grade)
 
     private suspend fun makeMatch(
         matchType : MatchType,

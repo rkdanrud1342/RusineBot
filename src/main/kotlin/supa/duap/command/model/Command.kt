@@ -2,10 +2,7 @@ package supa.duap.command.model
 
 import dev.kord.common.Locale
 import dev.kord.common.entity.optional.optional
-import dev.kord.rest.builder.interaction.GlobalChatInputCreateBuilder
-import dev.kord.rest.builder.interaction.integer
-import dev.kord.rest.builder.interaction.string
-import dev.kord.rest.builder.interaction.user
+import dev.kord.rest.builder.interaction.*
 import supa.duap.Grade
 
 sealed class Command(
@@ -64,6 +61,9 @@ sealed class Command(
 
             const val RECORD_GAME_RESULT_OPTION1_NAME = "p1승리수"
             const val RECORD_GAME_RESULT_OPTION2_NAME = "p2승리수"
+
+            const val SET_GRADE_OPTION1_NAME = "사용자"
+            const val SET_GRADE_OPTION2_NAME = "등급"
         }
         data object CREATE_PROFILE : MatchingCommand(
             key = "프로필생성",
@@ -311,6 +311,22 @@ sealed class Command(
 
                 name(Locale.CHINESE_TAIWAN, "名次表")
                 description(Locale.CHINESE_TAIWAN, "顯示排名表及本人的排名。")
+            }
+        )
+
+        data object SET_GRADE : MatchingCommand(
+            key = "등급설정",
+            description = "유저의 등급을 설정합니다. [!!경고!!] 기존에 기록된 점수가 설정 등급의 기본 점수로 변경되니 유의하세요.",
+            builder = {
+                user(
+                    name = SET_GRADE_OPTION1_NAME,
+                    description = "등급을 변경할 사용자"
+                )
+
+                role(
+                    name = SET_GRADE_OPTION2_NAME,
+                    description = "사용자에게 설정할 등급"
+                )
             }
         )
     }

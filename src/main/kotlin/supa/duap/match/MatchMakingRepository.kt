@@ -40,6 +40,11 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
     ) = request { api.registerMatchScore(playerId, p1Score, p2Score) }
 
     suspend fun getPlayerRanking(
-        playerId: Long
+        playerId : Long
     ) = request { api.getPlayerRanking(playerId) }
+
+    suspend fun setPlayerGrade(
+        playerId : Long,
+        grade : Int
+    ) = request { api.setPlayerGrade(playerId, grade) }
 }

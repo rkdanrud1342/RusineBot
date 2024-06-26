@@ -82,6 +82,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         addCommand(MatchingCommand.RECORD_GAME_RESULT)
 
         addCommand(MatchingCommand.SHOW_RANKING)
+
+        addCommand(MatchingCommand.SET_GRADE)
     }
 
     override suspend fun responseCommand(command : MatchingCommand, interaction : ChatInputCommandInteraction) {
@@ -95,6 +97,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             MatchingCommand.GAME_CANCEL -> matchCancel(interaction)
             MatchingCommand.RECORD_GAME_RESULT -> registerMatchScore(interaction)
             MatchingCommand.SHOW_RANKING -> showRanking(interaction)
+            MatchingCommand.SET_GRADE -> setGrade(interaction)
         }
     }
 
@@ -118,9 +121,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     grade
                 )
             }
-            .catch { e ->
-                interaction.respondEphemeral { embed { description = e.message ?: "프로필 생성에 실패했습니다." } }
-            }
             .onEach { player ->
                 if (player == null) {
                     interaction.respondEphemeral { embed { description = "프로필 생성에 실패했습니다." } }
@@ -142,7 +142,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
             }
-            .take(1)
+            .catch { e ->
+                interaction.respondEphemeral { embed { description = e.message ?: "프로필 생성에 실패했습니다." } }
+            }
             .collect()
     }
 
@@ -160,9 +162,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 matchMakingManager.getProfile(user.id.value.toLong())
             }
-            .catch { e ->
-                interaction.respondEphemeral { embed { description = e.message ?: "프로필 검색에 실패했습니다." } }
-            }
             .onEach { player ->
                 if (player == null) {
                     interaction.respondEphemeral { embed { description = "프로필 검색에 실패했습니다." } }
@@ -174,6 +173,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         description = player.format(interaction.locale)
                     }
                 }
+            }
+            .catch { e ->
+                interaction.respondEphemeral { embed { description = e.message ?: "프로필 검색에 실패했습니다." } }
             }
             .collect()
     }
@@ -777,6 +779,44 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             .catch { e ->
                 e.printStackTrace()
                 interaction.respondEphemeral { embed { description = e.message ?: "알 수 없는 오류가 발생했습니다." } }
+            }
+            .collect()
+    }
+
+    private suspend fun setGrade(interaction : ChatInputCommandInteraction) {
+        val target = interaction.command.users[MatchingCommand.SET_GRADE_OPTION1_NAME] ?: throw Exception("사용자를 찾을 수 없습니다.")
+        val newRole = interaction.command.roles[MatchingCommand.SET_GRADE_OPTION2_NAME] ?: throw Exception("역할이 잘못되었습니다.")
+        val grade = Grade.getFromRole(newRole) ?: throw Exception("역할이 잘못되었습니다.")
+
+        matchMakingManager.setPlayerGrade(target.id.value.toLong(), grade.ordinal)
+            .onEach { player ->
+                if (player == null) {
+                    interaction.respondEphemeral { embed { description = "등급 변경에 실패했습니다." } }
+                    return@onEach
+                }
+
+                (target as Member).let { member ->
+                    roleManager.fighterRoles.forEach { oldRole ->
+                        if (member.hasRole(oldRole)) {
+                            member.removeRole(oldRole.id)
+                        }
+                    }
+
+                    member.addRole(newRole.id)
+                }
+
+                interaction.respondEphemeral {
+                    embed {
+                        author {
+                            name = "등급이 변경되었습니다."
+                        }
+
+                        description = player.format(interaction.locale)
+                    }
+                }
+            }
+            .catch { e ->
+                interaction.respondEphemeral { embed { description = e.message ?: "등급 변경에 실패했습니다." } }
             }
             .collect()
     }

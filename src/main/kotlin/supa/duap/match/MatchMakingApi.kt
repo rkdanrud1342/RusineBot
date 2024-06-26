@@ -54,4 +54,11 @@ interface MatchMakingApi {
     suspend fun getPlayerRanking(
         @Query("playerId") playerId : Long
     ) : APIResponse<PlayerRank?>
+
+    @FormUrlEncoded
+    @POST("player/grade")
+    suspend fun setPlayerGrade(
+        @Field("playerId") playerId : Long,
+        @Field("grade") grade : Int
+    ) : APIResponse<PlayerProfile?>
 }

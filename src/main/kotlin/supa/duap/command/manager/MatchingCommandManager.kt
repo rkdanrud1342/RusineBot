@@ -108,7 +108,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
         flow {
             val list = author.roles.fold(mutableListOf<Role>()) { list, role -> list.apply { add(role) } }
-            emit(Grade.getFromRole(list))
+            val grade = Grade.getFromRole(*list.toTypedArray()) ?: throw Exception("격투 역할이 없군요. 역할 배정을 먼저 받아주세요!")
+            emit(grade)
         }
             .flatMapConcat { grade ->
                 matchMakingManager.createProfile(

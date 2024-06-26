@@ -90,16 +90,12 @@ enum class Grade(val gradeName : String) {
                 else -> GOD
             }
 
-        fun getFromRole(roles : List<Role>) : Grade {
+        fun getFromRole(vararg roles : Role) : Grade? {
             roles.forEach { role ->
-                val grade = entries.find { role.name.contains(it.gradeName) }
-
-                if (grade != null) {
-                    return grade
-                }
+                entries.find { role.name.contains(it.gradeName) }?.also { return it }
             }
 
-            return BEGINNER
+            return null
         }
     }
 }

@@ -103,24 +103,16 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun registerProfile(interaction : ChatInputCommandInteraction) {
-        val locale = interaction.locale
-
-        val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-            throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-        }
-
-        flow {
+        interaction.author.flatMapConcat { author ->
             val list = author.roles.fold(mutableListOf<Role>()) { list, role -> list.apply { add(role) } }
             val grade = Grade.getFromRole(*list.toTypedArray()) ?: throw Exception("격투 역할이 없군요. 역할 배정을 먼저 받아주세요!")
-            emit(grade)
+
+            matchMakingManager.createProfile(
+                author.id.value.toLong(),
+                author.mention,
+                grade
+            )
         }
-            .flatMapConcat { grade ->
-                matchMakingManager.createProfile(
-                    author.id.value.toLong(),
-                    author.mention,
-                    grade
-                )
-            }
             .onEach { player ->
                 if (player == null) {
                     interaction.respondEphemeral { embed { description = "프로필 생성에 실패했습니다." } }
@@ -130,7 +122,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 interaction.respondEphemeral {
                     embed {
                         author {
-                            name = when (locale) {
+                            name = when (interaction.locale) {
                                 Locale.ENGLISH_UNITED_STATES -> "Profile has been Created!"
                                 Locale.JAPANESE -> "プロフィールが作られました！"
                                 Locale.CHINESE_TAIWAN -> "配置文件已創建！"
@@ -150,13 +142,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun showProfile(interaction : ChatInputCommandInteraction) {
-        flow {
-            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
-        }
+        interaction.author
             .flatMapConcat { author ->
                 val user = interaction.command.users[MatchingCommand.SHOW_PROFILE_OPTION1_NAME] ?: author
 
@@ -182,13 +168,10 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun registerMatchQueue(interaction : ChatInputCommandInteraction, matchType : MatchType) {
-        val author = interaction.user.takeIf { it is Member } as Member?
-
-        if (author == null) {
-            throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-        }
-
-        matchMakingManager.getPlayer(author.id.value.toLong())
+        interaction.author
+            .flatMapConcat { author ->
+                matchMakingManager.getPlayer(author.id.value.toLong())
+            }
             .flatMapConcat { player ->
                 if (player == null) {
                     throw Exception("선수 검색에 실패했습니다.")
@@ -314,13 +297,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun showMatchInfo(interaction : ChatInputCommandInteraction) {
-        flow {
-            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
-        }
+        interaction.author
             .flatMapConcat { author ->
                 matchMakingManager.getRunningMatch(author.id.value.toLong())
             }
@@ -351,15 +328,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun unregisterMatchPool(interaction : ChatInputCommandInteraction) {
-        val author = interaction.user.takeIf { it is Member } as Member?
-
-        flow {
-            if (author == null) {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
-        }
+        interaction.author
             .flatMapConcat {
                 matchMakingManager.getPlayer(it.id.value.toLong())
             }
@@ -408,13 +377,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun matchCancel(interaction : ChatInputCommandInteraction) {
-        flow {
-            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
-        }
+        interaction.author
             .flatMapConcat {
                 matchMakingManager.cancelRunningMatch(it.id.value.toLong())
             }
@@ -440,13 +403,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION1_NAME]
         val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION2_NAME]
 
-        flow {
-            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
-        }
+        interaction.author
             .flatMapConcat { author ->
                 if (p1WinCount == null || p2WinCount == null) {
                     throw Exception(
@@ -745,13 +702,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun showRanking(interaction : ChatInputCommandInteraction) {
-        flow {
-            val author = interaction.user.takeIf { it is Member } as Member? ?: run {
-                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
-            }
-
-            emit(author)
-        }
+        interaction.author
             .flatMapConcat {
                 matchMakingManager.getPlayerRanking(it.id.value.toLong())
             }
@@ -904,5 +855,14 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
             Locale.CHINESE_TAIWAN -> "${rank}位 : $name ${eloScore}分"
 
             else -> "${rank}위 : $name ${eloScore}점"
+        }
+
+    private val ChatInputCommandInteraction.author : Flow<Member>
+        get() = flow {
+            val author = user.takeIf { it is Member } as Member? ?: run {
+                throw Exception("누가 절 부르신거죠? 부르신 분을 못찾겠어요.")
+            }
+
+            emit(author)
         }
 }

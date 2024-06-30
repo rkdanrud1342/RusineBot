@@ -209,60 +209,62 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 deferredMessageMap[player] = interaction.deferEphemeralResponse()
 
                 matchMakingManager.addOnMatchCreateListener(key = player) { match, needToMakeThread ->
-                    val deferredMessageBehavior = deferredMessageMap.remove(player) ?: return@addOnMatchCreateListener
+                    coroutineScope.launch(BaseCoroutine.default) {
+                        val deferredMessageBehavior = deferredMessageMap.remove(player) ?: return@launch
 
-                    if (match == null) {
+                        if (match == null) {
+                            deferredMessageBehavior.respond {
+                                embed {
+                                    description = buildString {
+                                        appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
+                                        append("Unregister match queues because no other players were found.")
+                                    }
+                                }
+                            }
+
+                            return@launch
+                        }
+
                         deferredMessageBehavior.respond {
                             embed {
-                                description = buildString {
-                                    appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
-                                    append("Unregister match queues because no other players were found.")
+                                author {
+                                    name = "Here Comes A New Challenger!"
                                 }
                             }
                         }
 
-                        return@addOnMatchCreateListener
-                    }
-
-                    deferredMessageBehavior.respond {
-                        embed {
-                            author {
-                                name = "Here Comes A New Challenger!"
-                            }
+                        if (!needToMakeThread) {
+                            return@launch
                         }
-                    }
 
-                    if (!needToMakeThread) {
-                        return@addOnMatchCreateListener
-                    }
+                        val (member1, member2) = (interaction.user as Member).getGuild()
+                            .run { getMember(Snowflake(match.player1.id)) to getMember(Snowflake(match.player2.id)) }
 
-                    val member1 = author.getGuild().getMember(Snowflake(match.player1.id))
-                    val member2 = author.getGuild().getMember(Snowflake(match.player2.id))
+                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
+                            .apply {
+                                addUser(member1.id)
+                                addUser(member2.id)
 
-                    (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
-                        .apply {
-                            addUser(member1.id)
-                            addUser(member2.id)
+                                createMessage {
+                                    content = "${member1.mention} VS ${member2.mention}"
+                                    embed {
+                                        author {
+                                            name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                                        }
 
-                            createMessage {
-                                content = "${member1.mention} VS ${member2.mention}"
-                                embed {
-                                    author {
-                                        name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
-                                    }
-
-                                    description = buildString {
-                                        appendLine(matchedMentList.random())
-                                        appendLine()
-                                        appendLine("1P : ${match.player1.name}")
-                                        appendLine("2P : ${match.player2.name}")
-                                        appendLine()
-                                        appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                        append("Please create a room and play Match!")
+                                        description = buildString {
+                                            appendLine(matchedMentList.random())
+                                            appendLine()
+                                            appendLine("1P : ${match.player1.name}")
+                                            appendLine("2P : ${match.player2.name}")
+                                            appendLine()
+                                            appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                                            append("Please create a room and play Match!")
+                                        }
                                     }
                                 }
                             }
-                        }
+                    }
                 }
 
                 val matchTypeName = when (matchType) {
@@ -272,14 +274,16 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 if (needToMention == "Y" && rankAvailableRange != -1) {
                     matchMakingManager.addOnNotMatchedAtOnceListener(key = player) {
-                        interaction.channel.createMessage {
-                            content = roleManager.getMentionRoles(player, rankAvailableRange)
-                                .joinToString(separator = " ") { it.mention }
+                        coroutineScope.launch(BaseCoroutine.default) {
+                            interaction.channel.createMessage {
+                                content = roleManager.getMentionRoles(player, rankAvailableRange)
+                                    .joinToString(separator = " ") { it.mention }
 
-                            embed {
-                                description = buildString {
-                                    appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고 있습니다!")
-                                    append("Someone is looking for an opponent in a ${matchTypeName.second}!")
+                                embed {
+                                    description = buildString {
+                                        appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고 있습니다!")
+                                        append("Someone is looking for an opponent in a ${matchTypeName.second}!")
+                                    }
                                 }
                             }
                         }
@@ -588,7 +592,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                val awaitingJob = coroutineScope.launch {
+                val awaitingJob = coroutineScope.launch(BaseCoroutine.default) {
                     delay(1000 * 60 * 3) // 3 minutes
                     job.cancel()
 
@@ -664,6 +668,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     .filterIsInstance(ButtonInteractionCreateEvent::class)
                     .filter { it.interaction.component.customId in listOf(okButtonId, cancelButtonId) }
                     .onEach(onButtonClickListener)
+                    .flowOn(BaseCoroutine.default)
                     .launchIn(coroutineScope)
 
                 interaction.respondPublic {

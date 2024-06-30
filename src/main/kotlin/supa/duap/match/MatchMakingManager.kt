@@ -25,8 +25,8 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
-    private val matchResultListeners = mutableMapOf<Player, suspend (RunningMatch?, Boolean) -> Unit>()
-    private val notMatchedAtOnceListeners = mutableMapOf<Player, suspend () -> Unit>()
+    private val matchResultListeners = mutableMapOf<Player, (RunningMatch?, Boolean) -> Unit>()
+    private val notMatchedAtOnceListeners = mutableMapOf<Player, () -> Unit>()
 
     init {
         makeChannel(CASUAL)
@@ -34,9 +34,9 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, matchType : MatchType) {
-        awaitingJobs[p.first] = matchMakingScope.launch {
-            notMatchedAtOnceListeners.remove(p.first)?.invoke()
+        notMatchedAtOnceListeners.remove(p.first)?.invoke()
 
+        awaitingJobs[p.first] = matchMakingScope.launch(BaseCoroutine.default) {
             delay(30000L)
 
             p.second.phase++
@@ -58,11 +58,11 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         }
     }
 
-    fun addOnMatchCreateListener(key : Player, listener : suspend (RunningMatch?, Boolean) -> Unit) {
+    fun addOnMatchCreateListener(key : Player, listener : (RunningMatch?, Boolean) -> Unit) {
         matchResultListeners[key] = listener
     }
 
-    fun addOnNotMatchedAtOnceListener(key : Player, listener : suspend () -> Unit) {
+    fun addOnNotMatchedAtOnceListener(key : Player, listener : () -> Unit) {
         notMatchedAtOnceListeners[key] = listener
     }
 
@@ -138,51 +138,57 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
             RANK -> rankedMatchChannel to rankedMatchQueue
         }
 
-        matchMakingScope.launch {
-            for (player1MatchArgsPair in channel) {
-                if (pool[player1MatchArgsPair.first] == null) {
-                    continue
-                }
+        channel.receiveAsFlow()
+            .onEach { player1MatchArgsPair ->
+                try {
+                    var player2MatchArgsPair : Pair<Player, MatchArgs>? = null
 
-                var player2MatchArgsPair : Pair<Player, MatchArgs>? = null
+                    for (e in pool) {
+                        if (player1MatchArgsPair.first == e.key) {
+                            // same player
+                            continue
+                        }
 
-                for (e in pool) {
-                    if (player1MatchArgsPair.first == e.key) {
-                        // same player
-                        continue
+                        if (!canBothPlayerBeMatched(player1MatchArgsPair, e.toPair())) {
+                            // cannot be matched
+                            continue
+                        }
+
+                        // matched. init player2 info and break loop.
+                        player2MatchArgsPair = e.toPair()
+                        break
                     }
 
-                    if (!canBothPlayerBeMatched(player1MatchArgsPair, e.toPair())) {
-                        // cannot be matched
-                        continue
+                    // when matched
+                    player2MatchArgsPair?.let {
+                        val player1 = player1MatchArgsPair.first
+                        val player2 = player2MatchArgsPair.first
+
+                        val match = makeMatch(matchType, player1, player2) ?: return@let null
+
+                        awaitingJobs.remove(player1)?.takeIf { !it.isCancelled }?.cancel()
+                        awaitingJobs.remove(player2)?.takeIf { !it.isCancelled }?.cancel()
+
+                        pool.remove(player1)
+                        pool.remove(player2)
+
+                        matchResultListeners.remove(player1)?.invoke(match, true)
+                        matchResultListeners.remove(player2)?.invoke(match, false)
+                    } ?: run {
+                        // when no matched
+                        onNoMatched(player1MatchArgsPair, matchType)
                     }
-
-                    // matched. init player2 info and break loop.
-                    player2MatchArgsPair = e.toPair()
-                    break
-                }
-
-                // when matched
-                player2MatchArgsPair?.let {
-                    val player1 = player1MatchArgsPair.first
-                    val player2 = player2MatchArgsPair.first
-
-                    awaitingJobs.remove(player1)?.cancel()
-                    awaitingJobs.remove(player2)?.cancel()
-
-                    pool.remove(player1)
-                    pool.remove(player2)
-
-                    val match = makeMatch(matchType, player1, player2) ?: return@let null
-
-                    matchResultListeners.remove(player1)?.invoke(match, true)
-                    matchResultListeners.remove(player2)?.invoke(match, false)
-                } ?: run {
-                    // when no matched
-                    onNoMatched(player1MatchArgsPair, matchType)
+                } catch (e : Exception) {
+                    logger.error("아니 도대체 무슨 익셉션인거야??")
+                    logger.error(e)
                 }
             }
-        }
+            .catch { e ->
+                logger.error("아니 도대체 무슨 익셉션인거야??")
+                logger.error(e)
+            }
+            .flowOn(BaseCoroutine.default)
+            .launchIn(matchMakingScope)
     }
 
     private fun Player.toDummyProfile() = PlayerProfile(

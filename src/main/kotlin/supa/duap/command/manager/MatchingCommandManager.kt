@@ -444,6 +444,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         }
                     )
                 }
+
                 matchMakingManager.getRunningMatch(author.id.value.toLong())
             }
             .onEach { runningMatch ->
@@ -628,6 +629,9 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                                         }
                                     }
                                 }
+
+                                scoreCheckMap.remove(runningMatch.player1.id)
+                                scoreCheckMap.remove(runningMatch.player2.id)
 
                                 job.cancel()
                             }

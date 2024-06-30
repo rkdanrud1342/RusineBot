@@ -295,7 +295,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                             embed {
                                 description = buildString {
-                                    appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고있습니다!")
+                                    appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고 있습니다!")
                                     append("Someone is looking for an opponent in a ${matchTypeName.second}!")
                                 }
                             }

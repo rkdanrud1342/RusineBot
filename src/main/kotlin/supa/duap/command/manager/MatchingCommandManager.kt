@@ -209,62 +209,60 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 deferredMessageMap[player] = interaction.deferEphemeralResponse()
 
                 matchMakingManager.addOnMatchCreateListener(key = player) { match, needToMakeThread ->
-                    coroutineScope.launch(BaseCoroutine.default) {
-                        val deferredMessageBehavior = deferredMessageMap.remove(player) ?: return@launch
+                    val deferredMessageBehavior = deferredMessageMap.remove(player) ?: return@addOnMatchCreateListener
 
-                        if (match == null) {
-                            deferredMessageBehavior.respond {
-                                embed {
-                                    description = buildString {
-                                        appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
-                                        append("Unregister match queues because no other players were found.")
-                                    }
-                                }
-                            }
-
-                            return@launch
-                        }
-
+                    if (match == null) {
                         deferredMessageBehavior.respond {
                             embed {
-                                author {
-                                    name = "Here Comes A New Challenger!"
+                                description = buildString {
+                                    appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
+                                    append("Unregister match queues because no other players were found.")
                                 }
                             }
                         }
 
-                        if (!needToMakeThread) {
-                            return@launch
+                        return@addOnMatchCreateListener
+                    }
+
+                    deferredMessageBehavior.respond {
+                        embed {
+                            author {
+                                name = "Here Comes A New Challenger!"
+                            }
                         }
+                    }
 
-                        val (member1, member2) = (interaction.user as Member).getGuild()
-                            .run { getMember(Snowflake(match.player1.id)) to getMember(Snowflake(match.player2.id)) }
+                    if (!needToMakeThread) {
+                        return@addOnMatchCreateListener
+                    }
 
-                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
-                            .apply {
-                                addUser(member1.id)
-                                addUser(member2.id)
+                    val (member1, member2) = (interaction.user as Member).getGuild()
+                        .run { getMember(Snowflake(match.player1.id)) to getMember(Snowflake(match.player2.id)) }
 
-                                createMessage {
-                                    content = "${member1.mention} VS ${member2.mention}"
-                                    embed {
-                                        author {
-                                            name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
-                                        }
+                    (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
+                        .apply {
+                            addUser(member1.id)
+                            addUser(member2.id)
 
-                                        description = buildString {
-                                            appendLine(matchedMentList.random())
-                                            appendLine()
-                                            appendLine("1P : ${match.player1.name}")
-                                            appendLine("2P : ${match.player2.name}")
-                                            appendLine()
-                                            appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                            append("Please create a room and play Match!")
-                                        }
+                            createMessage {
+                                content = "${member1.mention} VS ${member2.mention}"
+                                embed {
+                                    author {
+                                        name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                                    }
+
+                                    description = buildString {
+                                        appendLine(matchedMentList.random())
+                                        appendLine()
+                                        appendLine("1P : ${match.player1.name}")
+                                        appendLine("2P : ${match.player2.name}")
+                                        appendLine()
+                                        appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                                        append("Please create a room and play Match!")
                                     }
                                 }
                             }
-                    }
+                        }
                 }
 
                 val matchTypeName = when (matchType) {

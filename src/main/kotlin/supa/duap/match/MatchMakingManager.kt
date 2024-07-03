@@ -25,7 +25,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
-    private val matchResultListeners = mutableMapOf<Player, (RunningMatch?, Boolean) -> Unit>()
+    private val matchResultListeners = mutableMapOf<Player, suspend (RunningMatch?, Boolean) -> Unit>()
     private val notMatchedAtOnceListeners = mutableMapOf<Player, () -> Unit>()
 
     init {
@@ -58,7 +58,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         }
     }
 
-    fun addOnMatchCreateListener(key : Player, listener : (RunningMatch?, Boolean) -> Unit) {
+    fun addOnMatchCreateListener(key : Player, listener : suspend (RunningMatch?, Boolean) -> Unit) {
         matchResultListeners[key] = listener
     }
 
@@ -67,7 +67,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     fun enqueue(player : Player, matchArgs : MatchArgs, matchType : MatchType) {
-        matchMakingScope.launch {
+        matchMakingScope.launch(BaseCoroutine.default) {
             when (matchType) {
                 CASUAL -> {
                     casualMatchQueue[player] = matchArgs
@@ -132,63 +132,65 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         return (p1AvailableRange < 0 || diff <= p1AvailableRange) && (p2AvailableRange < 0 || diff <= p2AvailableRange)
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun makeChannel(matchType : MatchType) {
-        val (channel, pool) = when (matchType) {
-            CASUAL -> casualMatchChannel to casualMatchQueue
-            RANK -> rankedMatchChannel to rankedMatchQueue
+        matchMakingScope.launch(BaseCoroutine.default) {
+            val (channel, pool) = when (matchType) {
+                CASUAL -> casualMatchChannel to casualMatchQueue
+                RANK -> rankedMatchChannel to rankedMatchQueue
+            }
+
+            yield()
+
+            while (!channel.isClosedForReceive) {
+                channel.receiveAsFlow()
+                    .onEach { player1MatchArgsPair ->
+                        var player2MatchArgsPair : Pair<Player, MatchArgs>? = null
+
+                        for (e in pool) {
+                            if (player1MatchArgsPair.first == e.key) {
+                                // same player
+                                continue
+                            }
+
+                            if (!canBothPlayerBeMatched(player1MatchArgsPair, e.toPair())) {
+                                // cannot be matched
+                                continue
+                            }
+
+                            // matched. init player2 info and break loop.
+                            player2MatchArgsPair = e.toPair()
+                            break
+                        }
+
+                        // when matched
+                        player2MatchArgsPair?.let {
+                            val player1 = player1MatchArgsPair.first
+                            val player2 = player2MatchArgsPair.first
+
+                            val match = makeMatch(matchType, player1, player2) ?: return@let null
+
+                            awaitingJobs.remove(player1)?.takeIf { !it.isCancelled }?.cancel()
+                            awaitingJobs.remove(player2)?.takeIf { !it.isCancelled }?.cancel()
+
+                            pool.remove(player1)
+                            pool.remove(player2)
+
+                            matchResultListeners.remove(player1)?.invoke(match, true)
+                            matchResultListeners.remove(player2)?.invoke(match, false)
+                        } ?: run {
+                            // when no matched
+                            onNoMatched(player1MatchArgsPair, matchType)
+                        }
+                    }
+                    .catch { e ->
+                        logger.error("아니 도대체 무슨 익셉션인거야??")
+                        logger.error(e)
+                    }
+                    .flowOn(BaseCoroutine.default)
+                    .collect()
+            }
         }
-
-        channel.receiveAsFlow()
-            .onEach { player1MatchArgsPair ->
-                try {
-                    var player2MatchArgsPair : Pair<Player, MatchArgs>? = null
-
-                    for (e in pool) {
-                        if (player1MatchArgsPair.first == e.key) {
-                            // same player
-                            continue
-                        }
-
-                        if (!canBothPlayerBeMatched(player1MatchArgsPair, e.toPair())) {
-                            // cannot be matched
-                            continue
-                        }
-
-                        // matched. init player2 info and break loop.
-                        player2MatchArgsPair = e.toPair()
-                        break
-                    }
-
-                    // when matched
-                    player2MatchArgsPair?.let {
-                        val player1 = player1MatchArgsPair.first
-                        val player2 = player2MatchArgsPair.first
-
-                        val match = makeMatch(matchType, player1, player2) ?: return@let null
-
-                        awaitingJobs.remove(player1)?.takeIf { !it.isCancelled }?.cancel()
-                        awaitingJobs.remove(player2)?.takeIf { !it.isCancelled }?.cancel()
-
-                        pool.remove(player1)
-                        pool.remove(player2)
-
-                        matchResultListeners.remove(player1)?.invoke(match, true)
-                        matchResultListeners.remove(player2)?.invoke(match, false)
-                    } ?: run {
-                        // when no matched
-                        onNoMatched(player1MatchArgsPair, matchType)
-                    }
-                } catch (e : Exception) {
-                    logger.error("아니 도대체 무슨 익셉션인거야??")
-                    logger.error(e)
-                }
-            }
-            .catch { e ->
-                logger.error("아니 도대체 무슨 익셉션인거야??")
-                logger.error(e)
-            }
-            .flowOn(BaseCoroutine.default)
-            .launchIn(matchMakingScope)
     }
 
     private fun Player.toDummyProfile() = PlayerProfile(

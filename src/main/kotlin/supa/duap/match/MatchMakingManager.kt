@@ -26,7 +26,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     private val awaitingJobs : MutableMap<Player, Job> = mutableMapOf()
 
     private val matchResultListeners = mutableMapOf<Player, suspend (RunningMatch?, Boolean) -> Unit>()
-    private val notMatchedAtOnceListeners = mutableMapOf<Player, () -> Unit>()
+    private val notMatchedAtOnceListeners = mutableMapOf<Player, suspend () -> Unit>()
 
     init {
         makeChannel(CASUAL)
@@ -62,7 +62,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
         matchResultListeners[key] = listener
     }
 
-    fun addOnNotMatchedAtOnceListener(key : Player, listener : () -> Unit) {
+    fun addOnNotMatchedAtOnceListener(key : Player, listener : suspend () -> Unit) {
         notMatchedAtOnceListeners[key] = listener
     }
 

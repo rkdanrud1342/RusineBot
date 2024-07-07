@@ -272,16 +272,14 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 if (needToMention == "Y" && rankAvailableRange != -1) {
                     matchMakingManager.addOnNotMatchedAtOnceListener(key = player) {
-                        coroutineScope.launch(BaseCoroutine.default) {
-                            interaction.channel.createMessage {
-                                content = roleManager.getMentionRoles(player, rankAvailableRange)
-                                    .joinToString(separator = " ") { it.mention }
+                        interaction.channel.createMessage {
+                            content = roleManager.getMentionRoles(player, rankAvailableRange)
+                                .joinToString(separator = " ") { it.mention }
 
-                                embed {
-                                    description = buildString {
-                                        appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고 있습니다!")
-                                        append("Someone is looking for an opponent in a ${matchTypeName.second}!")
-                                    }
+                            embed {
+                                description = buildString {
+                                    appendLine("누군가가 ${matchTypeName.first}에서 겨룰 상대를 찾고 있습니다!")
+                                    append("Someone is looking for an opponent in a ${matchTypeName.second}!")
                                 }
                             }
                         }

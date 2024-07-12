@@ -10,7 +10,6 @@ import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.respondPublic
-import dev.kord.core.behavior.interaction.response.DeferredEphemeralMessageInteractionResponseBehavior
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.interaction.updatePublicMessage
 import dev.kord.core.entity.Member
@@ -22,6 +21,7 @@ import dev.kord.rest.builder.component.ButtonBuilder
 import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.BaseCoroutine
@@ -34,8 +34,6 @@ import java.util.*
 import kotlin.math.roundToInt
 
 class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord) {
-    private val coroutineScope = CoroutineScope(BaseCoroutine.default)
-
     private val matchMakingManager : MatchMakingManager by inject(MatchMakingManager::class.java)
     private val roleManager : RoleManager by inject(RoleManager::class.java)
 
@@ -59,8 +57,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         "Get Ready For The Next Battle!",
         "이 드라마가 어떻게 전개될지 한 번 확인해보시죠!"
     )
-
-    private val deferredMessageMap = mutableMapOf<Player, DeferredEphemeralMessageInteractionResponseBehavior>()
 
     private val scoreCheckMap : MutableMap<Long, Boolean> = mutableMapOf()
 
@@ -206,68 +202,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
-                deferredMessageMap[player] = interaction.deferEphemeralResponse()
-
-                matchMakingManager.addOnMatchCreateListener(key = player) { match, needToMakeThread ->
-                    val deferredMessageBehavior = deferredMessageMap.remove(player) ?: return@addOnMatchCreateListener
-
-                    if (match == null) {
-                        deferredMessageBehavior.respond {
-                            embed {
-                                description = buildString {
-                                    appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
-                                    append("Unregister match queues because no other players were found.")
-                                }
-                            }
-                        }
-
-                        return@addOnMatchCreateListener
-                    }
-
-                    deferredMessageBehavior.respond {
-                        embed {
-                            author {
-                                name = "Here Comes A New Challenger!"
-                            }
-                        }
-                    }
-
-                    if (!needToMakeThread) {
-                        return@addOnMatchCreateListener
-                    }
-
-                    val (member1, member2) = (interaction.user as Member).getGuild()
-                        .run { getMember(Snowflake(match.player1.id)) to getMember(Snowflake(match.player2.id)) }
-
-                    (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
-                        .apply {
-                            addUser(member1.id)
-                            addUser(member2.id)
-
-                            createMessage {
-                                content = "${member1.mention} VS ${member2.mention}"
-                                embed {
-                                    author {
-                                        name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
-                                    }
-
-                                    description = buildString {
-                                        appendLine(matchedMentList.random())
-                                        appendLine()
-                                        appendLine("1P : ${match.player1.name}")
-                                        appendLine("2P : ${match.player2.name}")
-                                        appendLine()
-                                        appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
-                                        append("Please create a room and play Match!")
-                                    }
-                                }
-                            }
-                        }
-                }
+                val deferredResponse = interaction.deferEphemeralResponse()
 
                 val matchTypeName = when (matchType) {
                     MatchType.CASUAL -> "캐주얼 매치" to "casual match"
-                    MatchType.RANK -> "랭크 매치" to "rank match"
+                    MatchType.RANK -> "랭크 매치" to "ranking match"
                 }
 
                 if (needToMention == "Y" && rankAvailableRange != -1) {
@@ -286,7 +225,68 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                matchMakingManager.enqueue(player, matchArgs, MatchType.RANK)
+                callbackFlow {
+                    matchMakingManager.addOnMatchCreateListener(key = player) { match, needToMakeThread ->
+                        trySend(match to needToMakeThread)
+                        close()
+                    }
+
+                    matchMakingManager.enqueue(player, matchArgs, matchType)
+
+                    awaitClose()
+                }
+                    .onEach callbackFlowOnEach@ { (match, needToMakeThread) ->
+                        if (match == null) {
+                            deferredResponse.respond {
+                                content = interaction.user.mention
+
+                                embed {
+                                    description = buildString {
+                                        appendLine("대전 상대를 찾지 못해 대기열 등록을 취소합니다.")
+                                        append("Unregister match queues because no other players were found.")
+                                    }
+                                }
+                            }
+
+                            return@callbackFlowOnEach
+                        }
+
+                        deferredResponse.delete()
+
+                        if (!needToMakeThread) {
+                            return@callbackFlowOnEach
+                        }
+
+                        val (member1, member2) = (interaction.user as Member).getGuild()
+                            .run { getMember(Snowflake(match.player1.id)) to getMember(Snowflake(match.player2.id)) }
+
+                        (interaction.channel.asChannelOf<TextChannel>()).startPublicThread(name = "P1 ${member1.effectiveName} VS P2 ${member2.effectiveName}")
+                            .apply {
+                                addUser(member1.id)
+                                addUser(member2.id)
+
+                                createMessage {
+                                    content = "${member1.mention} VS ${member2.mention}"
+                                    embed {
+                                        author {
+                                            name = "Here comes a new challenger! 대전 상대가 결정되었습니다!"
+                                        }
+
+                                        description = buildString {
+                                            appendLine(matchedMentList.random())
+                                            appendLine()
+                                            appendLine("1P : ${match.player1.name}")
+                                            appendLine("2P : ${match.player2.name}")
+                                            appendLine()
+                                            appendLine("방을 생성하여 대전을 진행해주시기 바랍니다!")
+                                            append("Please create a room and play Match!")
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                    .flowOn(BaseCoroutine.default)
+                    .launchIn(kord)
             }
             .catch { e ->
                 e.printStackTrace()
@@ -359,7 +359,6 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                deferredMessageMap.remove(player)?.respond { embed { description = "매칭 대기를 취소했습니다." } }?.delete()
             }
             .catch { e ->
                 e.printStackTrace()
@@ -589,7 +588,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     }
                 }
 
-                val awaitingJob = coroutineScope.launch(BaseCoroutine.default) {
+                val awaitingJob = kord.launch(BaseCoroutine.default) {
                     delay(1000 * 60 * 3) // 3 minutes
                     job.cancel()
 
@@ -669,7 +668,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                     .filter { it.interaction.component.customId in listOf(okButtonId, cancelButtonId) }
                     .onEach(onButtonClickListener)
                     .flowOn(BaseCoroutine.default)
-                    .launchIn(coroutineScope)
+                    .launchIn(kord)
 
                 interaction.respondPublic {
                     embed {

@@ -15,7 +15,7 @@ val managerModule = module {
 //    single { MusicCommandManager(get()) }
     single { MatchingCommandManager(get()) }
 
-    single { MatchMakingManager(get()) }
+    single { MatchMakingManager(get(), get()) }
 
 //    single { InteractionManager(get(), get(), get(), get()) }
     single { RoleManager(get()) }

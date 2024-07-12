@@ -1,5 +1,6 @@
 package supa.duap.match
 
+import dev.kord.core.Kord
 import io.ktor.util.logging.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -12,10 +13,11 @@ import supa.duap.match.model.MatchType.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
-class MatchMakingManager(private val repo : MatchMakingRepository) {
+class MatchMakingManager(
+    private val kord : Kord,
+    private val repo : MatchMakingRepository
+) {
     private val logger = LoggerFactory.getLogger(MatchMakingManager::class.java)
-
-    private val matchMakingScope : CoroutineScope = CoroutineScope(BaseCoroutine.default)
 
     private val casualMatchQueue : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
     private val rankedMatchQueue : MutableMap<Player, MatchArgs> = ConcurrentHashMap()
@@ -36,7 +38,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     private suspend fun onNoMatched(p : Pair<Player, MatchArgs>, matchType : MatchType) {
         notMatchedAtOnceListeners.remove(p.first)?.invoke()
 
-        awaitingJobs[p.first] = matchMakingScope.launch(BaseCoroutine.default) {
+        awaitingJobs[p.first] = kord.launch(BaseCoroutine.default) {
             delay(30000L)
 
             p.second.phase++
@@ -67,7 +69,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
     }
 
     fun enqueue(player : Player, matchArgs : MatchArgs, matchType : MatchType) {
-        matchMakingScope.launch(BaseCoroutine.default) {
+        kord.launch(BaseCoroutine.default) {
             when (matchType) {
                 CASUAL -> {
                     casualMatchQueue[player] = matchArgs
@@ -134,7 +136,7 @@ class MatchMakingManager(private val repo : MatchMakingRepository) {
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun makeChannel(matchType : MatchType) {
-        matchMakingScope.launch(BaseCoroutine.default) {
+        kord.launch(BaseCoroutine.default) {
             val (channel, pool) = when (matchType) {
                 CASUAL -> casualMatchChannel to casualMatchQueue
                 RANK -> rankedMatchChannel to rankedMatchQueue

@@ -84,10 +84,13 @@ class MatchMakingManager(
         }
     }
 
-    fun dequeue(player : Player) : Boolean =
-        casualMatchQueue.remove(player) != null ||
-                rankedMatchQueue.remove(player) != null ||
-                awaitingJobs[player]?.also { it.cancel() } != null
+    fun dequeue(player : Player) : Boolean {
+        val casualMatchQueueResult = casualMatchQueue.remove(player) != null
+        val rankMatchQueueResult = rankedMatchQueue.remove(player) != null
+        val awaitingJobsResult = awaitingJobs.remove(player)?.also { it.cancel() } != null
+
+        return casualMatchQueueResult || rankMatchQueueResult || awaitingJobsResult
+    }
 
     fun isRegistered(player : Player) : Boolean =
         casualMatchQueue[player] != null || rankedMatchQueue[player] != null

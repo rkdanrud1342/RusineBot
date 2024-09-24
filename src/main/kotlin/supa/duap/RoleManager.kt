@@ -1,6 +1,8 @@
 package supa.duap
 
+import com.kotlindiscord.kord.extensions.utils.hasRole
 import dev.kord.core.Kord
+import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.event.guild.GuildCreateEvent
 import dev.kord.core.on
@@ -11,7 +13,12 @@ import supa.duap.match.model.Player
 class RoleManager(
     private val kord : Kord
 ) {
+    companion object {
+        private const val ADMIN_ROLE_NAME = "관리자"
+    }
     private val logger : Logger = LoggerFactory.getLogger(this.javaClass)
+
+    private lateinit var adminRole : Role
 
     private val _fighterRoles = mutableListOf<Role>()
     val fighterRoles : List<Role>
@@ -22,6 +29,11 @@ class RoleManager(
             val roleArray = Array<Role?>(Grade.entries.size) { null }
 
             guild.roles.collect { role ->
+                if (role.name.contains(ADMIN_ROLE_NAME)) {
+                    adminRole = role
+                    return@collect
+                }
+
                 val grade = Grade.entries.find { grade -> role.name.contains(grade.gradeName) } ?: return@collect
 
                 roleArray[grade.ordinal] = role
@@ -51,6 +63,14 @@ class RoleManager(
     }
 
     fun getRoleFromGrade(grade : Grade) : Role = _fighterRoles[grade.ordinal]
+
+    fun hasAdminRole(member: Member) : Boolean {
+        if (!::adminRole.isInitialized) {
+            return false
+        }
+
+        return member.hasRole(adminRole)
+    }
 }
 
 enum class Grade(val gradeName : String) {

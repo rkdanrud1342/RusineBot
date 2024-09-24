@@ -80,12 +80,15 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
         addCommand(MatchingCommand.SHOW_RANKING)
 
         addCommand(MatchingCommand.SET_GRADE)
+
+        addCommand(MatchingCommand.DELETE_PROFILE)
     }
 
     override suspend fun responseCommand(command : MatchingCommand, interaction : ChatInputCommandInteraction) {
         when (command) {
             MatchingCommand.CREATE_PROFILE -> registerProfile(interaction)
             MatchingCommand.SHOW_PROFILE -> showProfile(interaction)
+            MatchingCommand.DELETE_PROFILE -> deleteProfile(interaction)
             MatchingCommand.CASUAL_GAME -> registerMatchQueue(interaction, MatchType.CASUAL)
             MatchingCommand.RANK_GAME -> registerMatchQueue(interaction, MatchType.RANK)
             MatchingCommand.MATCH_INFO -> showMatchInfo(interaction)
@@ -140,7 +143,7 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     private suspend fun showProfile(interaction : ChatInputCommandInteraction) {
         interaction.author
             .flatMapConcat { author ->
-                val user = interaction.command.users[MatchingCommand.SHOW_PROFILE_OPTION1_NAME] ?: author
+                val user = interaction.command.users[MatchingCommand.OPTION_NAME_PLAYER] ?: author
 
                 matchMakingManager.getProfile(user.id.value.toLong())
             }
@@ -155,6 +158,26 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                         description = player.format(interaction.locale)
                     }
                 }
+            }
+            .catch { e ->
+                interaction.respondEphemeral { embed { description = e.message ?: "프로필 검색에 실패했습니다." } }
+            }
+            .collect()
+    }
+
+    private suspend fun deleteProfile(interaction : ChatInputCommandInteraction) {
+        interaction.author
+            .flatMapConcat { author ->
+                if (!roleManager.hasAdminRole(author)) {
+                    throw Exception("관리자 권한이 없습니다.")
+                }
+
+                val user = interaction.command.users[MatchingCommand.OPTION_NAME_USER] ?: throw Exception("사용자 매개변수를 찾을 수 없습니다.")
+
+                matchMakingManager.deleteProfile(user.id.value.toLong())
+            }
+            .onEach {
+                interaction.respondEphemeral { embed { description = "프로필을 삭제했습니다." } }
             }
             .catch { e ->
                 interaction.respondEphemeral { embed { description = e.message ?: "프로필 검색에 실패했습니다." } }
@@ -194,11 +217,11 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
                 }
 
                 val awaitTimeMinutes =
-                    interaction.command.integers[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION1_NAME]?.toInt() ?: 10
+                    interaction.command.integers[MatchingCommand.OPTION_NAME_AWAIT_TIME]?.toInt() ?: 10
                 val rankAvailableRange =
-                    interaction.command.integers[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION2_NAME]?.toInt() ?: 1
+                    interaction.command.integers[MatchingCommand.OPTION_NAME_MAX_GRADE_DIFF]?.toInt() ?: 1
                 val needToMention =
-                    interaction.command.strings[MatchingCommand.MATCH_REGISTER_COMMAND_OPTION3_NAME] ?: "Y"
+                    interaction.command.strings[MatchingCommand.OPTION_NAME_MENTION_YN] ?: "Y"
 
                 val matchArgs = MatchArgs(player.id, rankAvailableRange, awaitTimeMinutes)
 
@@ -399,8 +422,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun registerMatchScore(interaction : ChatInputCommandInteraction) {
         val winCounts = interaction.command.integers
-        val p1WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION1_NAME]
-        val p2WinCount = winCounts[MatchingCommand.RECORD_GAME_RESULT_OPTION2_NAME]
+        val p1WinCount = winCounts[MatchingCommand.OPTION_NAME_P1_WIN_COUNT]
+        val p2WinCount = winCounts[MatchingCommand.OPTION_NAME_P2_WIN_COUNT]
 
         interaction.author
             .flatMapConcat { author ->
@@ -739,8 +762,8 @@ class MatchingCommandManager(kord : Kord) : CommandManager<MatchingCommand>(kord
     }
 
     private suspend fun setGrade(interaction : ChatInputCommandInteraction) {
-        val target = interaction.command.users[MatchingCommand.SET_GRADE_OPTION1_NAME] ?: throw Exception("사용자를 찾을 수 없습니다.")
-        val newRole = interaction.command.roles[MatchingCommand.SET_GRADE_OPTION2_NAME] ?: throw Exception("역할이 잘못되었습니다.")
+        val target = interaction.command.users[MatchingCommand.OPTION_NAME_USER] ?: throw Exception("사용자를 찾을 수 없습니다.")
+        val newRole = interaction.command.roles[MatchingCommand.OPTION_NAME_GRADE] ?: throw Exception("역할이 잘못되었습니다.")
         val grade = Grade.getFromRole(newRole) ?: throw Exception("역할이 잘못되었습니다.")
 
         matchMakingManager.setPlayerGrade(target.id.value.toLong(), grade.ordinal)

@@ -54,7 +54,6 @@ class APIResponseCall<T>(
                                     Response.success(APIResponse.Fail(message = "서버가 응답할 수 없는 상태입니다."))
                                 )
                             }
-
                         }
 
                         return
@@ -81,7 +80,12 @@ class APIResponseCall<T>(
                                 return
                             }
 
-                            val data = gson.fromJson<T>(resBody.get("data"), successType)
+                            val data =
+                                if (this@APIResponseCall.callDelegate.request().method != "DELETE") {
+                                    gson.fromJson<T>(resBody.get("data"), successType)
+                                } else {
+                                    null
+                                }
 
                             callback.onResponse(
                                 this@APIResponseCall,

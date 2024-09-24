@@ -24,6 +24,11 @@ interface MatchMakingApi {
         @Query("id") id : Long
     ) : APIResponse<PlayerProfile?>
 
+    @DELETE("player/profile")
+    suspend fun deleteProfile(
+        @Header("playerId") id : Long
+    ) : APIResponse<PlayerProfile?>
+
     @FormUrlEncoded
     @POST("match/create")
     suspend fun createMatch(

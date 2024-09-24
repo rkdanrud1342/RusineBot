@@ -19,6 +19,10 @@ class MatchMakingRepository(private val api : MatchMakingApi) {
         id : Long
     ) = request { api.getProfile(id) }
 
+    suspend fun deleteProfile(
+        id : Long
+    ) = request { api.deleteProfile(id) }
+
     suspend fun getRunningMatch(
         playerId : Long
     ) = request { api.getRunningMatch(playerId) }

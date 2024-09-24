@@ -53,17 +53,17 @@ sealed class Command(
         builder : GlobalChatInputCreateBuilder.() -> Unit = {}
     ) : Command(key, description, builder) {
         companion object {
-            const val SHOW_PROFILE_OPTION1_NAME = "플레이어"
+            const val OPTION_NAME_PLAYER = "플레이어"
 
-            const val MATCH_REGISTER_COMMAND_OPTION1_NAME = "대기시간"
-            const val MATCH_REGISTER_COMMAND_OPTION2_NAME = "최대등급차"
-            const val MATCH_REGISTER_COMMAND_OPTION3_NAME = "멘션여부"
+            const val OPTION_NAME_AWAIT_TIME = "대기시간"
+            const val OPTION_NAME_MAX_GRADE_DIFF = "최대등급차"
+            const val OPTION_NAME_MENTION_YN = "멘션여부"
 
-            const val RECORD_GAME_RESULT_OPTION1_NAME = "p1승리수"
-            const val RECORD_GAME_RESULT_OPTION2_NAME = "p2승리수"
+            const val OPTION_NAME_P1_WIN_COUNT = "p1승리수"
+            const val OPTION_NAME_P2_WIN_COUNT = "p2승리수"
 
-            const val SET_GRADE_OPTION1_NAME = "사용자"
-            const val SET_GRADE_OPTION2_NAME = "등급"
+            const val OPTION_NAME_USER = "사용자"
+            const val OPTION_NAME_GRADE = "등급"
         }
         data object CREATE_PROFILE : MatchingCommand(
             key = "프로필생성",
@@ -94,7 +94,7 @@ sealed class Command(
                 description(Locale.CHINESE_TAIWAN, "查看簡歷。")
 
                 user(
-                    name = SHOW_PROFILE_OPTION1_NAME,
+                    name = OPTION_NAME_PLAYER,
                     description = "해당 플레이어의 프로필을 보여드립니다!"
                 ) {
                     name(Locale.ENGLISH_UNITED_STATES, "player")
@@ -109,11 +109,22 @@ sealed class Command(
             }
         )
 
+        data object DELETE_PROFILE : MatchingCommand(
+            key = "프로필삭제",
+            description = "사용자의 프로필을 삭제합니다.",
+            builder = {
+                user(
+                    name = OPTION_NAME_USER,
+                    description = "프로필을 삭제할 사용자"
+                )
+            }
+        )
+
         sealed interface MatchRegisterCommand {
             companion object {
                 val builder : GlobalChatInputCreateBuilder.() -> Unit = {
                     integer(
-                        name = MATCH_REGISTER_COMMAND_OPTION1_NAME,
+                        name = OPTION_NAME_AWAIT_TIME,
                         description = "매칭 대기시간을 분단위로 설정합니다. 기본 : 10분, 최소 1분, 최대 60분.",
                         builder = {
                             name(Locale.ENGLISH_UNITED_STATES, "waiting_time")
@@ -131,7 +142,7 @@ sealed class Command(
                     )
 
                     integer(
-                        name = MATCH_REGISTER_COMMAND_OPTION2_NAME,
+                        name = OPTION_NAME_MAX_GRADE_DIFF,
                         description = "자신과 상대의 최대 등급 차이를 설정합니다. 기본값은 1입니다. 설정하지 않으려면 -1을 입력하세요.",
                         builder = {
                             name(Locale.ENGLISH_UNITED_STATES, "max_grade_difference")
@@ -149,7 +160,7 @@ sealed class Command(
                     ).optional()
 
                     string(
-                        name = MATCH_REGISTER_COMMAND_OPTION3_NAME,
+                        name = OPTION_NAME_MENTION_YN,
                         description = "최대등급차 내의 계급을 멘션합니다.",
                         builder = {
                             name(Locale.ENGLISH_UNITED_STATES, "mention_others")
@@ -262,7 +273,7 @@ sealed class Command(
                 description(Locale.CHINESE_TAIWAN, "登記遊戲分數。")
 
                 integer(
-                    name = RECORD_GAME_RESULT_OPTION1_NAME,
+                    name = OPTION_NAME_P1_WIN_COUNT,
                     description = "P1의 승리 수를 입력해주세요.",
                     builder = {
                         name(Locale.ENGLISH_UNITED_STATES, "p1_score")
@@ -280,7 +291,7 @@ sealed class Command(
                 )
 
                 integer(
-                    name = RECORD_GAME_RESULT_OPTION2_NAME,
+                    name = OPTION_NAME_P2_WIN_COUNT,
                     description = "P2의 승리 수를 입력해주세요.",
                     builder = {
                         name(Locale.ENGLISH_UNITED_STATES, "p2_score")
@@ -319,12 +330,12 @@ sealed class Command(
             description = "유저의 등급을 설정합니다. [!!경고!!] 기존에 기록된 점수가 설정 등급의 기본 점수로 변경되니 유의하세요.",
             builder = {
                 user(
-                    name = SET_GRADE_OPTION1_NAME,
+                    name = OPTION_NAME_USER,
                     description = "등급을 변경할 사용자"
                 )
 
                 role(
-                    name = SET_GRADE_OPTION2_NAME,
+                    name = OPTION_NAME_GRADE,
                     description = "사용자에게 설정할 등급"
                 )
             }

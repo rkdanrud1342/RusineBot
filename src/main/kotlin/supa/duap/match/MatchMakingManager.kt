@@ -97,6 +97,7 @@ class MatchMakingManager(
 
     suspend fun createProfile(id : Long, nickname : String?, grade : Grade) = repo.createPlayer(id, nickname, grade)
     suspend fun getProfile(id : Long) = repo.getProfile(id)
+    suspend fun deleteProfile(id : Long) = repo.deleteProfile(id)
     suspend fun getPlayer(id : Long) = repo.getPlayer(id)
     suspend fun getRunningMatch(playerId : Long) = repo.getRunningMatch(playerId)
     suspend fun cancelRunningMatch(playerId : Long) = repo.cancelRunningMatch(playerId)

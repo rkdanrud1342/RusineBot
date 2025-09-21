@@ -1,6 +1,5 @@
 package supa.duap
 
-import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.entity.interaction.ChatInputCommandInteraction
@@ -11,7 +10,6 @@ import supa.duap.command.model.Command
 import supa.duap.command.manager.CommandManager
 import supa.duap.command.manager.MatchingCommandManager
 
-@KordVoice
 class InteractionManager(
     private val kord : Kord,
     private val basicCommandManager : BasicCommandManager,

@@ -1,6 +1,5 @@
 package supa.duap
 
-import dev.kord.common.annotation.KordVoice
 import dev.kord.core.Kord
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
@@ -10,7 +9,6 @@ import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.inject
 import supa.duap.modules.*
 
-@KordVoice
 suspend fun main() {
     startKoin {
         modules(

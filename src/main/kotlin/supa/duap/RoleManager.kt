@@ -56,10 +56,10 @@ class RoleManager(
 
         val index = player.grade.ordinal
 
-        val lowIndex = (index - rankAvailableRange).takeIf { it != -1 } ?: 0
-        val highIndex = ((index + rankAvailableRange).takeIf { it <= _fighterRoles.lastIndex } ?: _fighterRoles.lastIndex) + 1
+        val lowIndex = (index - rankAvailableRange).coerceAtLeast(0)
+        val highIndex = (index + rankAvailableRange).coerceAtMost(_fighterRoles.lastIndex)
 
-        return _fighterRoles.subList(lowIndex, highIndex)
+        return _fighterRoles.slice(lowIndex .. highIndex)
     }
 
     fun getRoleFromGrade(grade : Grade) : Role = _fighterRoles[grade.ordinal]

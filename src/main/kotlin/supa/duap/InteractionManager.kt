@@ -10,19 +10,16 @@ import supa.duap.command.manager.BasicCommandManager
 import supa.duap.command.model.Command
 import supa.duap.command.manager.CommandManager
 import supa.duap.command.manager.MatchingCommandManager
-import supa.duap.command.manager.MusicCommandManager
 
 @KordVoice
 class InteractionManager(
     private val kord : Kord,
     private val basicCommandManager : BasicCommandManager,
-//    private val musicCommandManager : MusicCommandManager,
     private val matchingCommandManager : MatchingCommandManager
 ) {
 
     suspend fun start() {
         basicCommandManager.registerCommand()
-//        musicCommandManager.registerCommand()
         matchingCommandManager.registerCommand()
 
         kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -30,7 +27,6 @@ class InteractionManager(
 
             when (command) {
                 is Command.BasicCommand -> basicCommandManager.responseCommand(command, interaction)
-//                is Command.MusicCommand -> musicCommandManager.responseCommand(command, interaction)
                 is Command.MatchingCommand -> matchingCommandManager.responseCommand(command, interaction)
                 else -> responseUnknownCommand(interaction)
             }

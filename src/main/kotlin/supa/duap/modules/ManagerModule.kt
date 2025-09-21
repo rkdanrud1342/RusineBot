@@ -6,18 +6,15 @@ import supa.duap.InteractionManager
 import supa.duap.RoleManager
 import supa.duap.command.manager.BasicCommandManager
 import supa.duap.command.manager.MatchingCommandManager
-import supa.duap.command.manager.MusicCommandManager
 import supa.duap.match.MatchMakingManager
 
 @KordVoice
 val managerModule = module {
     single { BasicCommandManager(get()) }
-//    single { MusicCommandManager(get()) }
     single { MatchingCommandManager(get()) }
 
     single { MatchMakingManager(get(), get()) }
 
-//    single { InteractionManager(get(), get(), get(), get()) }
     single { RoleManager(get()) }
     single { InteractionManager(get(), get(), get()) }
 }

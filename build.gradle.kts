@@ -32,7 +32,6 @@ dependencies {
     implementation("dev.kord:kord-voice:0.14.0")
     implementation("dev.kord:kord-core-voice:0.14.0")
     implementation("org.slf4j:slf4j-simple:2.0.7")
-    implementation("dev.arbjerg:lavaplayer:2.0.1")
     implementation("org.json:json:20240303")
     implementation("io.insert-koin:koin-core:3.5.0")
     implementation(libs.kord.extensions)

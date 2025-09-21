@@ -86,8 +86,7 @@ enum class Grade(val gradeName : String) {
     IMMORTAL_SR("이모탈 SR Immortal"),
     IMMORTAL_SSR("이모탈 SSR Immortal"),
     IMMORTAL_UR("이모탈 UR Immortal"),
-    IMMORTAL_SUR("이모탈 SUR Immortal"),
-    GOD("GOD");
+    IMMORTAL_SUR("이모탈 SUR Immortal");
 
     operator fun minus(opGrade : Grade) : Int = this.ordinal - opGrade.ordinal
 
@@ -106,8 +105,7 @@ enum class Grade(val gradeName : String) {
                 in 6000..6249 -> IMMORTAL_SR
                 in 6250..6499 -> IMMORTAL_SSR
                 in 6500..6749 -> IMMORTAL_UR
-                in 6750..6999 -> IMMORTAL_SUR
-                else -> GOD
+                else -> IMMORTAL_SUR
             }
 
         fun getFromRole(vararg roles : Role) : Grade? {

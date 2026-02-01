@@ -1,5 +1,21 @@
 [versions]
-kord-extensions = "1.8.0-SNAPSHOT"
+commons-io = "2.13.0"
+retrofit = "2.11.0"
+okhttp = "4.12.0"
+kord = "0.14.0"
+slf4j = "2.0.7"
+json = "20240303"
+koin = "3.5.0"
 
 [libraries]
-kord-extensions = { module = "com.kotlindiscord.kord.extensions:kord-extensions", version.ref = "kord-extensions" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
+retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit"}
+retrofit-gson-converter = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit"}
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+kord-core = { module = "dev.kord:kord-core", version.ref = "kord" }
+kord-voice = { module = "dev.kord:kord-voice", version.ref = "kord" }
+kord-core-voice = { module = "dev.kord:kord-core-voice", version.ref = "kord" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+json = { module = "org.json:json", version.ref = "json" }
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

@@ -1,6 +1,5 @@
 package supa.duap.command.manager
 
-import com.kotlindiscord.kord.extensions.utils.hasRole
 import dev.kord.common.Locale
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Snowflake
@@ -28,6 +27,7 @@ import supa.duap.BaseCoroutine
 import supa.duap.Grade
 import supa.duap.RoleManager
 import supa.duap.command.model.Command.MatchingCommand
+import supa.duap.hasRole
 import supa.duap.match.MatchMakingManager
 import supa.duap.match.model.*
 import java.util.*

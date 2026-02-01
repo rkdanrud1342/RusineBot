@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.9.0"
-    kotlin("plugin.serialization") version "1.9.0"
+    kotlin("jvm") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
     application
 }
 
@@ -23,18 +23,17 @@ repositories {
 }
 
 dependencies {
-    implementation("commons-io:commons-io:2.13.0")
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("dev.kord:kord-core:0.14.0")
-    implementation("dev.kord:kord-voice:0.14.0")
-    implementation("dev.kord:kord-core-voice:0.14.0")
-    implementation("org.slf4j:slf4j-simple:2.0.7")
-    implementation("org.json:json:20240303")
-    implementation("io.insert-koin:koin-core:3.5.0")
-    implementation(libs.kord.extensions)
+    implementation(libs.commons.io)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson.converter)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.kord.core)
+    implementation(libs.kord.voice)
+    implementation(libs.kord.core.voice)
+    implementation(libs.slf4j.simple)
+    implementation(libs.json)
+    implementation(libs.koin.core)
     implementation(kotlin("reflect"))
 }
 

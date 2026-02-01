@@ -1,11 +1,11 @@
 package supa.duap
 
-import com.kotlindiscord.kord.extensions.utils.hasRole
 import dev.kord.core.Kord
 import dev.kord.core.entity.Member
 import dev.kord.core.entity.Role
 import dev.kord.core.event.guild.GuildCreateEvent
 import dev.kord.core.on
+import kotlinx.coroutines.flow.toList
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import supa.duap.match.model.Player
@@ -40,7 +40,7 @@ class RoleManager(
             }
 
             roleArray.forEach { role ->
-                if (role == null) return@forEach
+                if (role == null || _fighterRoles.any { it.name == role.name }) return@forEach
 
                 _fighterRoles.add(role)
             }
@@ -64,12 +64,12 @@ class RoleManager(
 
     fun getRoleFromGrade(grade : Grade) : Role = _fighterRoles[grade.ordinal]
 
-    fun hasAdminRole(member: Member) : Boolean {
+    suspend fun hasAdminRole(member: Member) : Boolean {
         if (!::adminRole.isInitialized) {
             return false
         }
 
-        return member.hasRole(adminRole)
+        return member.roles.toList().contains(adminRole)
     }
 }
 
@@ -117,3 +117,5 @@ enum class Grade(val gradeName : String) {
         }
     }
 }
+
+suspend fun Member.hasRole(role : Role) : Boolean = roles.toList().contains(role)
